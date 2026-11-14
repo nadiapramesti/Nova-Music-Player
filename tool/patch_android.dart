@@ -3,13 +3,15 @@
 // Jalankan dari root project:  dart tool/patch_android.dart
 import 'dart:io';
 
-const _perms = '''
-    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
-    <uses-permission android:name="android.permission.WAKE_LOCK"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
-''';
+const _perms = [
+  '<uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>',
+  '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>',
+  '<uses-permission android:name="android.permission.WAKE_LOCK"/>',
+  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>',
+  '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>',
+  '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>',
+  '<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>',
+];
 
 const _service = '''
         <service
@@ -162,9 +164,12 @@ void main() {
   }
 
   var m = manifest.readAsStringSync();
-  if (!m.contains('READ_MEDIA_AUDIO')) {
-    m = m.replaceFirst('<application', '$_perms\n    <application');
-    stdout.writeln('+ izin audio');
+  for (final perm in _perms) {
+    final name = RegExp(r'android:name="([^"]+)"').firstMatch(perm)!.group(1)!;
+    if (!m.contains('"$name"')) {
+      m = m.replaceFirst('<application', '$perm\n    <application');
+      stdout.writeln('+ izin ${name.split('.').last}');
+    }
   }
   if (!m.contains('com.ryanheise.audioservice.AudioService')) {
     m = m.replaceFirst('</application>', '$_service    </application>');

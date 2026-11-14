@@ -31,9 +31,16 @@ class _ShellState extends State<Shell> {
     final bottom = MediaQuery.of(context).padding.bottom;
     return PopScope(
       // Tombol back di tab lain = balik ke Putar dulu.
-      canPop: _tab == 0,
+      // Back di tab lain = balik ke Putar. Back di Putar = Nova ke belakang,
+      // musik tetap jalan (app gak ditutup).
+      canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) setState(() => _tab = 0);
+        if (didPop) return;
+        if (_tab != 0) {
+          setState(() => _tab = 0);
+        } else {
+          library.moveToBack();
+        }
       },
       child: Scaffold(
         resizeToAvoidBottomInset: false,

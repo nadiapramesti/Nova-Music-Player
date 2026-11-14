@@ -1,12 +1,35 @@
 package com.nadia.nova
 
+import android.annotation.SuppressLint
 import android.content.ContentUris
+import android.content.Context
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Color
+import android.graphics.Outline
+import android.graphics.PixelFormat
+import android.graphics.drawable.GradientDrawable
+import android.media.AudioManager
 import android.media.MediaMetadataRetriever
+import android.net.Uri
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.provider.MediaStore
+import android.provider.Settings
+import android.text.TextUtils
+import android.util.TypedValue
+import android.view.GestureDetector
+import android.view.Gravity
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.View
+import android.view.ViewOutlineProvider
+import android.view.WindowManager
+import android.widget.ImageView
+import android.widget.LinearLayout
+import android.widget.TextView
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -14,45 +37,104 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
 /**
- * Nova: baca daftar lagu + cover langsung dari MediaStore.
- * Channel "nova/media" dipakai oleh lib/services/library_service.dart.
+ * Nova:
+ * - channel "nova/media": daftar lagu + cover dari MediaStore, dan "moveToBack".
+ * - channel "nova/overlay": pulau di notch yang tetap tampil di luar app.
  */
 class MainActivity : AudioServiceActivity() {
-    private val io = Executors.newFixedThreadPool(3)
     private val main = Handler(Looper.getMainLooper())
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nova/media")
-            .setMethodCallHandler { call, result ->
-                when (call.method) {
-                    "songs" -> io.execute {
-                        try {
-                            val list = querySongs()
-                            main.post { result.success(list) }
-                        } catch (e: Exception) {
-                            main.post { result.error("query", e.message, null) }
-                        }
+        NovaOverlay.init(applicationContext)
+        val messenger = flutterEngine.dartExecutor.binaryMessenger
+
+        MethodChannel(messenger, "nova/media").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "songs" -> NovaMedia.io.execute {
+                    try {
+                        val list = NovaMedia.querySongs(applicationContext)
+                        main.post { result.success(list) }
+                    } catch (e: Exception) {
+                        main.post { result.error("query", e.message, null) }
                     }
-                    "artwork" -> {
-                        val id = call.argument<Number>("id")?.toLong()
-                        val size = call.argument<Number>("size")?.toInt() ?: 300
-                        if (id == null) {
-                            result.success(null)
-                        } else {
-                            io.execute {
-                                val bytes = try { artwork(id, size) } catch (e: Exception) { null }
-                                main.post { result.success(bytes) }
-                            }
-                        }
-                    }
-                    else -> result.notImplemented()
                 }
+                "artwork" -> {
+                    val id = call.argument<Number>("id")?.toLong()
+                    val size = call.argument<Number>("size")?.toInt() ?: 300
+                    if (id == null) {
+                        result.success(null)
+                    } else {
+                        NovaMedia.io.execute {
+                            val bytes = try {
+                                NovaMedia.artworkBytes(applicationContext, id, size)
+                            } catch (e: Exception) {
+                                null
+                            }
+                            main.post { result.success(bytes) }
+                        }
+                    }
+                }
+                // Tombol back di layar utama: sembunyikan app, musik tetap jalan.
+                "moveToBack" -> {
+                    moveTaskToBack(true)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
             }
+        }
+
+        MethodChannel(messenger, "nova/overlay").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "canDraw" -> result.success(NovaOverlay.canDraw(this))
+                "requestPermission" -> {
+                    try {
+                        startActivity(
+                            Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:$packageName"),
+                            )
+                        )
+                    } catch (e: Exception) {
+                        startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION))
+                    }
+                    result.success(null)
+                }
+                "setEnabled" -> {
+                    NovaOverlay.enabled = call.arguments as? Boolean ?: false
+                    NovaOverlay.refresh()
+                    result.success(null)
+                }
+                "update" -> {
+                    NovaOverlay.update(
+                        id = call.argument<Number>("id")?.toLong() ?: -1L,
+                        title = call.argument<String>("title") ?: "",
+                        playing = call.argument<Boolean>("playing") ?: false,
+                    )
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
     }
 
+    override fun onStart() {
+        super.onStart()
+        NovaOverlay.setAppVisible(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        NovaOverlay.setAppVisible(false)
+    }
+}
+
+/** Baca lagu & cover dari MediaStore. */
+object NovaMedia {
+    val io = Executors.newFixedThreadPool(3)
+
     @Suppress("DEPRECATION")
-    private fun querySongs(): List<Map<String, Any?>> {
+    fun querySongs(ctx: Context): List<Map<String, Any?>> {
         val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
         val projection = arrayOf(
             MediaStore.Audio.Media._ID,
@@ -65,7 +147,7 @@ class MainActivity : AudioServiceActivity() {
             MediaStore.Audio.Media.DATA,
         )
         val out = ArrayList<Map<String, Any?>>()
-        contentResolver.query(
+        ctx.contentResolver.query(
             uri,
             projection,
             "${MediaStore.Audio.Media.IS_MUSIC} != 0",
@@ -100,11 +182,11 @@ class MainActivity : AudioServiceActivity() {
         return out
     }
 
-    private fun artwork(id: Long, size: Int): ByteArray? {
+    fun artworkBitmap(ctx: Context, id: Long, size: Int): Bitmap? {
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(
-                this,
+                ctx,
                 ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id),
             )
             val pic = retriever.embeddedPicture ?: return null
@@ -115,11 +197,7 @@ class MainActivity : AudioServiceActivity() {
                 sample *= 2
             }
             val opts = BitmapFactory.Options().apply { inSampleSize = sample }
-            val bmp = BitmapFactory.decodeByteArray(pic, 0, pic.size, opts) ?: return null
-            val stream = ByteArrayOutputStream()
-            bmp.compress(Bitmap.CompressFormat.JPEG, 88, stream)
-            bmp.recycle()
-            return stream.toByteArray()
+            return BitmapFactory.decodeByteArray(pic, 0, pic.size, opts)
         } finally {
             try {
                 retriever.release()
@@ -127,5 +205,242 @@ class MainActivity : AudioServiceActivity() {
                 // abaikan
             }
         }
+    }
+
+    fun artworkBytes(ctx: Context, id: Long, size: Int): ByteArray? {
+        val bmp = artworkBitmap(ctx, id, size) ?: return null
+        val stream = ByteArrayOutputStream()
+        bmp.compress(Bitmap.CompressFormat.JPEG, 88, stream)
+        bmp.recycle()
+        return stream.toByteArray()
+    }
+}
+
+/**
+ * Pulau di notch versi luar app: pil hitam di atas app lain.
+ * Muncul kalau: diaktifkan, izin "tampil di atas app lain" ada, ada lagu, dan Nova lagi di belakang.
+ * Tap pil = buka Nova. Tombol = play/jeda. Geser ke atas / tahan lama = sembunyikan
+ * (muncul lagi setelah Nova dibuka).
+ */
+@SuppressLint("StaticFieldLeak")
+object NovaOverlay {
+    var enabled = false
+
+    private var ctx: Context? = null
+    private val main = Handler(Looper.getMainLooper())
+    private var appVisible = true
+    private var dismissed = false
+    private var songId = -1L
+    private var title = ""
+    private var playing = false
+
+    private var root: LinearLayout? = null
+    private var cover: ImageView? = null
+    private var titleView: TextView? = null
+    private var playButton: ImageView? = null
+
+    fun init(c: Context) {
+        if (ctx == null) ctx = c.applicationContext
+    }
+
+    fun canDraw(c: Context): Boolean =
+        Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(c)
+
+    fun setAppVisible(visible: Boolean) {
+        appVisible = visible
+        if (visible) dismissed = false
+        refresh()
+    }
+
+    fun update(id: Long, title: String, playing: Boolean) {
+        val songChanged = id != songId
+        songId = id
+        this.title = title
+        this.playing = playing
+        if (songChanged) loadCover()
+        refresh()
+    }
+
+    fun refresh() {
+        val c = ctx ?: return
+        val show = enabled && !appVisible && !dismissed && songId >= 0 && canDraw(c)
+        if (show) attach(c) else detach()
+        bind()
+    }
+
+    private fun dp(v: Float): Int {
+        val c = ctx ?: return v.toInt()
+        return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, c.resources.displayMetrics).toInt()
+    }
+
+    private fun bind() {
+        titleView?.text = title
+        playButton?.setImageResource(
+            if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
+        )
+    }
+
+    private fun loadCover() {
+        val c = ctx ?: return
+        val id = songId
+        NovaMedia.io.execute {
+            val bmp = try {
+                NovaMedia.artworkBitmap(c, id, 96)
+            } catch (e: Exception) {
+                null
+            }
+            main.post {
+                if (id != songId) return@post
+                if (bmp != null) cover?.setImageBitmap(bmp) else cover?.setImageDrawable(null)
+            }
+        }
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun attach(c: Context) {
+        if (root != null) return
+        val wm = c.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+        val pill = LinearLayout(c).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(5f), 0, dp(4f), 0)
+            background = GradientDrawable().apply {
+                setColor(Color.BLACK)
+                cornerRadius = dp(17f).toFloat()
+                setStroke(dp(1f), Color.argb(26, 255, 255, 255))
+            }
+            contentDescription = "Nova: kembali ke pemutar"
+        }
+
+        val art = ImageView(c).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setBackgroundColor(Color.argb(30, 255, 255, 255))
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setOval(0, 0, view.width, view.height)
+                }
+            }
+            clipToOutline = true
+        }
+        pill.addView(art, LinearLayout.LayoutParams(dp(24f), dp(24f)))
+
+        val text = TextView(c).apply {
+            setTextColor(Color.rgb(236, 238, 245))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            paint.isFakeBoldText = true
+            isSingleLine = true
+            ellipsize = TextUtils.TruncateAt.MARQUEE
+            marqueeRepeatLimit = -1
+            isSelected = true
+        }
+        pill.addView(
+            text,
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(8f)
+                marginEnd = dp(4f)
+            },
+        )
+
+        val play = ImageView(c).apply {
+            setColorFilter(Color.rgb(174, 185, 255))
+            setPadding(dp(5f), dp(5f), dp(5f), dp(5f))
+            contentDescription = "Putar atau jeda"
+            setOnClickListener { sendPlayPause(c) }
+        }
+        pill.addView(play, LinearLayout.LayoutParams(dp(28f), dp(28f)))
+
+        val gestures = GestureDetector(c, object : GestureDetector.SimpleOnGestureListener() {
+            override fun onDown(e: MotionEvent): Boolean = true
+
+            override fun onSingleTapUp(e: MotionEvent): Boolean {
+                openApp(c)
+                return true
+            }
+
+            override fun onFling(e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float): Boolean {
+                if (vy < -600) {
+                    dismiss()
+                    return true
+                }
+                return false
+            }
+
+            override fun onLongPress(e: MotionEvent) {
+                dismiss()
+            }
+        })
+        pill.setOnTouchListener { _, ev -> gestures.onTouchEvent(ev) }
+
+        @Suppress("DEPRECATION")
+        val type = if (Build.VERSION.SDK_INT >= 26) {
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+        } else {
+            WindowManager.LayoutParams.TYPE_PHONE
+        }
+        val statusId = c.resources.getIdentifier("status_bar_height", "dimen", "android")
+        val statusH = if (statusId > 0) c.resources.getDimensionPixelSize(statusId) else dp(24f)
+        val params = WindowManager.LayoutParams(
+            dp(210f),
+            dp(34f),
+            type,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            y = maxOf(dp(4f), (statusH - dp(34f)) / 2)
+            if (Build.VERSION.SDK_INT >= 28) {
+                layoutInDisplayCutoutMode =
+                    WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
+        }
+
+        try {
+            wm.addView(pill, params)
+        } catch (e: Exception) {
+            return
+        }
+        root = pill
+        cover = art
+        titleView = text
+        playButton = play
+        pill.alpha = 0f
+        pill.scaleX = 0.6f
+        pill.animate().alpha(1f).scaleX(1f).setDuration(220).start()
+        loadCover()
+    }
+
+    private fun detach() {
+        val view = root ?: return
+        root = null
+        cover = null
+        titleView = null
+        playButton = null
+        try {
+            (ctx?.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.removeView(view)
+        } catch (e: Exception) {
+            // abaikan
+        }
+    }
+
+    private fun dismiss() {
+        dismissed = true
+        val view = root ?: return
+        view.animate().translationY(-dp(40f).toFloat()).alpha(0f).setDuration(200)
+            .withEndAction { refresh() }.start()
+    }
+
+    private fun openApp(c: Context) {
+        val intent = c.packageManager.getLaunchIntentForPackage(c.packageName) ?: return
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+        c.startActivity(intent)
+    }
+
+    private fun sendPlayPause(c: Context) {
+        val am = c.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+        am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
+        am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
     }
 }

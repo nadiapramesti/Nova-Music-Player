@@ -17,6 +17,7 @@ Future<void> main() async {
     androidNotificationOngoing: true,
   );
   await stats.init();
+  await island.init(audio);
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(

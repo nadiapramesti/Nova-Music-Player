@@ -7,6 +7,7 @@ import '../theme.dart';
 import '../widgets/art.dart';
 import '../widgets/controls.dart';
 import '../widgets/message_view.dart';
+import '../widgets/settings_sheet.dart';
 import '../widgets/song_row.dart';
 import 'now_playing_screen.dart';
 
@@ -112,6 +113,12 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text('nova', style: disp(26, spacing: -1)),
                       const Spacer(),
                       _ScanButton(onTap: () => library.load(ask: false)),
+                      const SizedBox(width: 8),
+                      GlassCircleButton(
+                        icon: Icons.tune_rounded,
+                        label: 'Pengaturan',
+                        onTap: () => showSettingsSheet(context),
+                      ),
                     ],
                   ),
                 ),

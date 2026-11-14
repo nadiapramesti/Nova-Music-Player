@@ -17,8 +17,10 @@ class LibraryService extends ChangeNotifier {
 
   Future<bool> _granted({required bool ask}) async {
     Future<PermissionStatus> check(Permission p) => ask ? p.request() : p.status;
-    if ((await check(Permission.audio)).isGranted) return true;
-    return (await check(Permission.storage)).isGranted;
+    final ok = (await check(Permission.audio)).isGranted || (await check(Permission.storage)).isGranted;
+    // Notifikasi buat kontrol lagu di luar app (Android 13+). Gak wajib.
+    if (ok && ask) await Permission.notification.request();
+    return ok;
   }
 
   Future<void> load({bool ask = true}) async {
@@ -42,6 +44,13 @@ class LibraryService extends ChangeNotifier {
       status = LibraryStatus.error;
     }
     notifyListeners();
+  }
+
+  /// Sembunyikan app tanpa menutupnya (musik tetap jalan).
+  Future<void> moveToBack() async {
+    try {
+      await _ch.invokeMethod<void>('moveToBack');
+    } catch (_) {}
   }
 
   Song? byId(int? id) {

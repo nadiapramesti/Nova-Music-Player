@@ -1,7 +1,9 @@
+import 'island_service.dart';
 import 'library_service.dart';
 import 'player_service.dart';
 import 'stats_service.dart';
 
+export 'island_service.dart';
 export 'library_service.dart';
 export 'player_service.dart';
 export 'stats_service.dart';
@@ -11,3 +13,4 @@ export 'stats_service.dart';
 final stats = StatsService();
 final library = LibraryService();
 final audio = PlayerService(stats);
+final island = IslandService();

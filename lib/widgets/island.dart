@@ -50,7 +50,16 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
     super.dispose();
   }
 
+  /// Lagu yang pulaunya disembunyikan (geser ke atas). Muncul lagi pas ganti lagu.
+  int? _hiddenFor;
+
   void _toggle(bool open) => setState(() => _open = open);
+
+  void _hide(Song song) => setState(() {
+        _open = false;
+        _showFull = false;
+        _hiddenFor = song.id;
+      });
 
   @override
   Widget build(BuildContext context) {
@@ -61,10 +70,11 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
     // Pas di tengah area status bar / lubang kamera.
     final y = max(6.0, (top - collapsedH) / 2);
 
-    return ValueListenableBuilder<Song?>(
-      valueListenable: audio.current,
-      builder: (context, song, _) {
-        if (song == null) return const SizedBox.shrink();
+    return ListenableBuilder(
+      listenable: Listenable.merge([audio.current, island]),
+      builder: (context, _) {
+        final song = audio.current.value;
+        if (song == null || !island.inApp || _hiddenFor == song.id) return const SizedBox.shrink();
         return Stack(
           children: [
             if (_open)
@@ -85,6 +95,10 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
                   label: _open ? null : 'Kontrol lagu: ${song.title}',
                   child: GestureDetector(
                     onTap: _open ? null : () => _toggle(true),
+                    // Geser ke atas = sembunyikan sampai lagu berikutnya.
+                    onVerticalDragEnd: (d) {
+                      if ((d.primaryVelocity ?? 0) < -250) _hide(song);
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 380),
                       curve: Curves.easeOutCubic,
