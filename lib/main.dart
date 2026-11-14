@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
 import 'screens/shell.dart';
+import 'screens/splash_screen.dart';
 import 'services/services.dart';
 import 'theme.dart';
 
@@ -37,7 +38,7 @@ class NovaApp extends StatelessWidget {
       title: 'Nova',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(),
-      home: const Shell(),
+      home: const SplashGate(child: Shell()),
     );
   }
 }

@@ -4,6 +4,7 @@ import '../models.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import '../widgets/controls.dart';
+import 'now_playing_screen.dart';
 import 'song_list_screen.dart';
 
 enum ShelfTab { album, artis, folder, favorit }
@@ -70,7 +71,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
             const Glow(top: -120, right: -140, size: 380),
             const Glow(top: 420, left: -160, size: 360, color: Nv.glowSoft),
             ListView(
-              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 210),
+              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 120),
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -212,7 +213,7 @@ class _FavoritesShortcut extends StatelessWidget {
               subtitle: s.artist,
               trailing: fmt(s.duration),
               active: audio.current.value?.id == s.id,
-              onTap: () => audio.playQueue(songs, i, from: 'Favorit'),
+              onTap: () => playAndOpen(context, songs, i, from: 'Favorit'),
             ),
           ),
       ],

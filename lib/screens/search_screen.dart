@@ -4,6 +4,7 @@ import '../models.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import '../widgets/song_row.dart';
+import 'now_playing_screen.dart';
 import 'song_list_screen.dart';
 
 class SearchScreen extends StatefulWidget {
@@ -53,7 +54,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const Glow(top: 20, left: -110, size: 360),
             ListView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 210),
+              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 120),
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -122,7 +123,7 @@ class _SearchScreenState extends State<SearchScreen> {
           number: i + 1,
           onTap: () {
             stats.addRecent(_q);
-            audio.playQueue(results, i, from: 'Hasil cari · ${_q.trim()}');
+            playAndOpen(context, results, i, from: 'Hasil cari · ${_q.trim()}');
           },
         ),
     ];

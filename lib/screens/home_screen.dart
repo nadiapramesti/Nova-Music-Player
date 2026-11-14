@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         label: 'Acak',
                         icon: Icons.shuffle_rounded,
                         selected: false,
-                        onTap: () => audio.shuffleQueue(sorted, from: 'Daftar putar · Acak'),
+                        onTap: () => shuffleAndOpen(context, sorted, from: 'Daftar putar · Acak'),
                       ),
                     ],
                   ),
@@ -158,10 +158,10 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemBuilder: (context, i) => SongRow(
                   song: sorted[i],
                   number: i + 1,
-                  onTap: () => audio.playQueue(sorted, i, from: from),
+                  onTap: () => playAndOpen(context, sorted, i, from: from),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 210)),
+              const SliverToBoxAdapter(child: SizedBox(height: 120)),
             ],
           ),
         ),
@@ -260,7 +260,7 @@ class _ResumeCard extends StatelessWidget {
                       openNowPlaying(context);
                     } else {
                       final i = songs.indexWhere((s) => s.id == song.id);
-                      audio.playQueue(songs, i < 0 ? 0 : i, from: 'Daftar putar · Terbaru');
+                      playAndOpen(context, songs, i < 0 ? 0 : i, from: 'Daftar putar · Terbaru');
                     }
                   },
                 ),

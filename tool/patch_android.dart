@@ -29,6 +29,75 @@ const _service = '''
         </receiver>
 ''';
 
+// ---- Splash bawaan Android (sebelum Flutter jalan) ----
+const _star = '''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <group android:translateX="34" android:translateY="34" android:scaleX="1.6667" android:scaleY="1.6667">
+        <path android:fillColor="#AEB9FF"
+            android:pathData="M12,1.5C12.6,7.1 16.9,11.4 22.5,12C16.9,12.6 12.6,16.9 12,22.5C11.4,16.9 7.1,12.6 1.5,12C7.1,11.4 11.4,7.1 12,1.5Z"/>
+    </group>
+</vector>
+''';
+
+const _launchBg = '''<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/nova_bg"/>
+    <item android:drawable="@drawable/nova_star" android:gravity="center"
+        android:width="108dp" android:height="108dp"/>
+</layer-list>
+''';
+
+const _colors = '''<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="nova_bg">#0A0B0F</color>
+</resources>
+''';
+
+const _styles = '''<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@color/nova_bg</item>
+    </style>
+</resources>
+''';
+
+const _styles31 = '''<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@drawable/launch_background</item>
+        <item name="android:windowSplashScreenBackground">@color/nova_bg</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/nova_star</item>
+    </style>
+    <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
+        <item name="android:windowBackground">@color/nova_bg</item>
+    </style>
+</resources>
+''';
+
+void _write(String path, String content) {
+  final f = File(path);
+  f.parent.createSync(recursive: true);
+  f.writeAsStringSync(content);
+}
+
+void patchSplash() {
+  const res = 'android/app/src/main/res';
+  _write('$res/drawable/nova_star.xml', _star);
+  _write('$res/values/nova_colors.xml', _colors);
+  _write('$res/drawable/launch_background.xml', _launchBg);
+  _write('$res/drawable-v21/launch_background.xml', _launchBg);
+  _write('$res/values/styles.xml', _styles);
+  _write('$res/values-night/styles.xml', _styles);
+  _write('$res/values-v31/styles.xml', _styles31);
+  _write('$res/values-night-v31/styles.xml', _styles31);
+  stdout.writeln('+ splash gelap + bintang Nova');
+}
+
 void main() {
   final manifest = File('android/app/src/main/AndroidManifest.xml');
   if (!manifest.existsSync()) {
@@ -70,6 +139,8 @@ void main() {
     t.deleteSync();
     stdout.writeln('+ test/widget_test.dart bawaan dihapus');
   }
+
+  patchSplash();
 
   stdout.writeln('Beres. Lanjut: flutter pub get');
 }

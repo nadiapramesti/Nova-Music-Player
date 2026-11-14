@@ -11,6 +11,9 @@ Tema gelap dengan panel kaca, satu aksen "cahaya bintang".
 - **Rak**: kelompokkan per Album, Artis, Folder, dan Favorit
 - **Cari**: cari judul/artis/album, riwayat pencarian, pintasan *Paling sering diputar*, *Lama gak didengar*, *Baru masuk HP*, *Favorit*
 - **Sedang diputar**: cover dari tag file, seek bar gelombang, acak, ulangi, antrean
+- **Pulau di notch**: pil hitam di area kamera yang nunjukin lagu yang diputar; tap buat kontrol mini
+- Tap lagu langsung buka layar Sedang diputar
+- Splash gelap dengan bintang Nova
 - Kontrol di notifikasi & lockscreen, tetap jalan saat layar mati
 - Statistik putar & favorit disimpan lokal di HP
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/services.dart';
 import '../widgets/deck.dart';
+import '../widgets/island.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
 import 'shelf_screen.dart';
@@ -46,6 +47,7 @@ class _ShellState extends State<Shell> {
               bottom: bottom + 12,
               child: Deck(tab: _tab, onTab: (i) => setState(() => _tab = i)),
             ),
+            const Positioned.fill(child: NowIsland()),
           ],
         ),
       ),

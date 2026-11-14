@@ -9,6 +9,17 @@ import '../theme.dart';
 import '../widgets/art.dart';
 import '../widgets/controls.dart';
 
+/// Putar dari daftar lalu langsung buka layar Sedang diputar.
+void playAndOpen(BuildContext context, List<Song> songs, int index, {String? from}) {
+  audio.playQueue(songs, index, from: from);
+  openNowPlaying(context);
+}
+
+void shuffleAndOpen(BuildContext context, List<Song> songs, {String? from}) {
+  audio.shuffleQueue(songs, from: from);
+  openNowPlaying(context);
+}
+
 void openNowPlaying(BuildContext context) {
   Navigator.of(context).push(PageRouteBuilder<void>(
     transitionDuration: const Duration(milliseconds: 360),

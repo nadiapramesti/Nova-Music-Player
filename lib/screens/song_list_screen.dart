@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../models.dart';
-import '../services/services.dart';
 import '../theme.dart';
 import '../widgets/controls.dart';
-import '../widgets/deck.dart';
+import '../widgets/island.dart';
 import '../widgets/song_row.dart';
+import 'now_playing_screen.dart';
 
 /// Daftar lagu generik: album, artis, folder, favorit, pintasan.
 class SongListScreen extends StatelessWidget {
@@ -37,7 +37,6 @@ class SongListScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
-    final bottom = MediaQuery.of(context).padding.bottom;
     final total = songs.fold<int>(0, (sum, s) => sum + s.durationMs);
 
     return Scaffold(
@@ -72,7 +71,7 @@ class SongListScreen extends StatelessWidget {
                               child: WideButton(
                                 label: 'Putar semua',
                                 icon: Icons.play_arrow_rounded,
-                                onTap: () => audio.playQueue(songs, 0, from: title),
+                                onTap: () => playAndOpen(context, songs, 0, from: title),
                               ),
                             ),
                             const SizedBox(width: 10),
@@ -81,7 +80,7 @@ class SongListScreen extends StatelessWidget {
                                 label: 'Acak',
                                 icon: Icons.shuffle_rounded,
                                 primary: false,
-                                onTap: () => audio.shuffleQueue(songs, from: title),
+                                onTap: () => shuffleAndOpen(context, songs, from: title),
                               ),
                             ),
                           ],
@@ -106,13 +105,13 @@ class SongListScreen extends StatelessWidget {
                   itemBuilder: (context, i) => SongRow(
                     song: songs[i],
                     number: i + 1,
-                    onTap: () => audio.playQueue(songs, i, from: title),
+                    onTap: () => playAndOpen(context, songs, i, from: title),
                   ),
                 ),
-              const SliverToBoxAdapter(child: SizedBox(height: 140)),
+              SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.bottom + 24)),
             ],
           ),
-          Positioned(left: 12, right: 12, bottom: bottom + 12, child: const Deck()),
+          const Positioned.fill(child: NowIsland()),
         ],
       ),
     );
