@@ -49,8 +49,6 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
     final mark = _seg(0.05, 0.45, Curves.easeOutBack);
     final word = _seg(0.3, 0.6);
     final slogan = _seg(0.45, 0.75);
-    final foot = _seg(0.6, 0.85);
-    final bottom = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       key: const ValueKey('splash'),
@@ -112,19 +110,6 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
                       ),
                     ),
                   ],
-                ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: bottom + 36,
-                child: Opacity(
-                  opacity: foot.value,
-                  child: Text(
-                    'OFFLINE · TANPA IKLAN · TANPA AKUN',
-                    textAlign: TextAlign.center,
-                    style: mono(11, spacing: 1.6),
-                  ),
                 ),
               ),
             ],
