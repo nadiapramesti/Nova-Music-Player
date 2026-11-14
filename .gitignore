@@ -1,0 +1,25 @@
+# Flutter / Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+pubspec.lock
+
+# Folder platform dibuat ulang lewat `flutter create` + tool/patch_android.dart
+android/
+ios/
+linux/
+macos/
+windows/
+web/
+test/widget_test.dart
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+nova.apk

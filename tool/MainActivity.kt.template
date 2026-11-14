@@ -1,0 +1,131 @@
+package com.nadia.nova
+
+import android.content.ContentUris
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.media.MediaMetadataRetriever
+import android.os.Handler
+import android.os.Looper
+import android.provider.MediaStore
+import com.ryanheise.audioservice.AudioServiceActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+import java.io.ByteArrayOutputStream
+import java.util.concurrent.Executors
+
+/**
+ * Nova: baca daftar lagu + cover langsung dari MediaStore.
+ * Channel "nova/media" dipakai oleh lib/services/library_service.dart.
+ */
+class MainActivity : AudioServiceActivity() {
+    private val io = Executors.newFixedThreadPool(3)
+    private val main = Handler(Looper.getMainLooper())
+
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "nova/media")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "songs" -> io.execute {
+                        try {
+                            val list = querySongs()
+                            main.post { result.success(list) }
+                        } catch (e: Exception) {
+                            main.post { result.error("query", e.message, null) }
+                        }
+                    }
+                    "artwork" -> {
+                        val id = call.argument<Number>("id")?.toLong()
+                        val size = call.argument<Number>("size")?.toInt() ?: 300
+                        if (id == null) {
+                            result.success(null)
+                        } else {
+                            io.execute {
+                                val bytes = try { artwork(id, size) } catch (e: Exception) { null }
+                                main.post { result.success(bytes) }
+                            }
+                        }
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun querySongs(): List<Map<String, Any?>> {
+        val uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
+        val projection = arrayOf(
+            MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.TITLE,
+            MediaStore.Audio.Media.ARTIST,
+            MediaStore.Audio.Media.ALBUM,
+            MediaStore.Audio.Media.ALBUM_ID,
+            MediaStore.Audio.Media.DURATION,
+            MediaStore.Audio.Media.DATE_ADDED,
+            MediaStore.Audio.Media.DATA,
+        )
+        val out = ArrayList<Map<String, Any?>>()
+        contentResolver.query(
+            uri,
+            projection,
+            "${MediaStore.Audio.Media.IS_MUSIC} != 0",
+            null,
+            "${MediaStore.Audio.Media.DATE_ADDED} DESC",
+        )?.use { c ->
+            val iId = c.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
+            val iTitle = c.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
+            val iArtist = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
+            val iAlbum = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
+            val iAlbumId = c.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
+            val iDur = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val iDate = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATE_ADDED)
+            val iData = c.getColumnIndexOrThrow(MediaStore.Audio.Media.DATA)
+            while (c.moveToNext()) {
+                val id = c.getLong(iId)
+                out.add(
+                    mapOf(
+                        "id" to id,
+                        "title" to c.getString(iTitle),
+                        "artist" to c.getString(iArtist),
+                        "album" to c.getString(iAlbum),
+                        "albumId" to c.getLong(iAlbumId),
+                        "duration" to c.getLong(iDur),
+                        "dateAdded" to c.getLong(iDate),
+                        "path" to (c.getString(iData) ?: ""),
+                        "uri" to ContentUris.withAppendedId(uri, id).toString(),
+                    )
+                )
+            }
+        }
+        return out
+    }
+
+    private fun artwork(id: Long, size: Int): ByteArray? {
+        val retriever = MediaMetadataRetriever()
+        try {
+            retriever.setDataSource(
+                this,
+                ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id),
+            )
+            val pic = retriever.embeddedPicture ?: return null
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeByteArray(pic, 0, pic.size, bounds)
+            var sample = 1
+            while (bounds.outWidth / (sample * 2) >= size && bounds.outHeight / (sample * 2) >= size) {
+                sample *= 2
+            }
+            val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+            val bmp = BitmapFactory.decodeByteArray(pic, 0, pic.size, opts) ?: return null
+            val stream = ByteArrayOutputStream()
+            bmp.compress(Bitmap.CompressFormat.JPEG, 88, stream)
+            bmp.recycle()
+            return stream.toByteArray()
+        } finally {
+            try {
+                retriever.release()
+            } catch (e: Exception) {
+                // abaikan
+            }
+        }
+    }
+}
