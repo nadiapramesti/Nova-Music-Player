@@ -15,7 +15,7 @@ class SplashGate extends StatefulWidget {
 
 class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateMixin {
   late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 1900));
   bool _done = false;
 
   @override
@@ -45,10 +45,12 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
   }
 
   Widget _splash() {
-    final glow = _seg(0.0, 0.7);
-    final star = _seg(0.1, 0.55, Curves.easeOutBack);
-    final word = _seg(0.35, 0.75);
-    final tag = _seg(0.55, 0.9);
+    final glow = _seg(0.0, 0.55);
+    final mark = _seg(0.05, 0.45, Curves.easeOutBack);
+    final word = _seg(0.3, 0.6);
+    final slogan = _seg(0.45, 0.75);
+    final foot = _seg(0.6, 0.85);
+    final bottom = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       key: const ValueKey('splash'),
@@ -57,49 +59,73 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
         animation: _c,
         builder: (context, _) {
           return Stack(
-            alignment: Alignment.center,
+            fit: StackFit.expand,
             children: [
-              Opacity(
-                opacity: glow.value.clamp(0.0, 1.0),
-                child: Transform.scale(
-                  scale: 0.4 + glow.value * 0.9,
-                  child: Container(
-                    width: 460,
-                    height: 460,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: RadialGradient(
-                        colors: [Color(0x59AEB9FF), Color(0x00AEB9FF)],
-                        stops: [0, 0.7],
+              // Cahaya "nova" di tengah layar, mekar pelan.
+              Center(
+                child: Opacity(
+                  opacity: glow.value,
+                  child: Transform.scale(
+                    scale: 0.6 + glow.value * 0.6,
+                    child: Container(
+                      width: 520,
+                      height: 520,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [Color(0x47AEB9FF), Color(0x00AEB9FF)],
+                          stops: [0, 0.68],
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Transform.rotate(
-                    angle: (1 - star.value) * -0.5,
-                    child: Transform.scale(
-                      scale: star.value.clamp(0.0, 1.2),
-                      child: const NovaMark(size: 92),
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Transform.scale(
+                      scale: mark.value,
+                      child: const NovaMark(size: 104),
                     ),
-                  ),
-                  const SizedBox(height: 18),
-                  Opacity(
-                    opacity: word.value,
-                    child: Transform.translate(
-                      offset: Offset(0, 14 * (1 - word.value)),
-                      child: Text('nova', style: disp(48, spacing: -1.8)),
+                    const SizedBox(height: 22),
+                    Opacity(
+                      opacity: word.value,
+                      child: Transform.translate(
+                        offset: Offset(0, 12 * (1 - word.value)),
+                        child: Text('nova', style: disp(52, spacing: -2, height: 1)),
+                      ),
                     ),
+                    const SizedBox(height: 12),
+                    Opacity(
+                      opacity: slogan.value,
+                      child: Transform.translate(
+                        offset: Offset(0, 10 * (1 - slogan.value)),
+                        child: Text.rich(
+                          TextSpan(children: [
+                            const TextSpan(text: 'Musikmu, '),
+                            TextSpan(text: 'tanpa jeda.', style: disp(19, w: 700, color: Nv.accent)),
+                          ]),
+                          style: disp(19, w: 600, color: Nv.text),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: bottom + 36,
+                child: Opacity(
+                  opacity: foot.value,
+                  child: Text(
+                    'OFFLINE · TANPA IKLAN · TANPA AKUN',
+                    textAlign: TextAlign.center,
+                    style: mono(11, spacing: 1.6),
                   ),
-                  const SizedBox(height: 6),
-                  Opacity(
-                    opacity: tag.value,
-                    child: Text('OFFLINE · TANPA IKLAN', style: mono(11.5, spacing: 1.6)),
-                  ),
-                ],
+                ),
               ),
             ],
           );
