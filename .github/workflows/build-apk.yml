@@ -38,11 +38,6 @@ jobs:
           flutter build apk --release
           cp build/app/outputs/flutter-apk/app-release.apk nova.apk
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: nova-apk
-          path: nova.apk
-
       - name: Rilis APK
         uses: softprops/action-gh-release@v2
         with:
