@@ -8,6 +8,7 @@ import '../services/services.dart';
 import '../theme.dart';
 import '../widgets/art.dart';
 import '../widgets/controls.dart';
+import '../widgets/deck.dart' show novaArtHero;
 
 /// Putar dari daftar lalu langsung buka layar Sedang diputar.
 void playAndOpen(BuildContext context, List<Song> songs, int index, {String? from}) {
@@ -120,7 +121,14 @@ class _Cover extends StatelessWidget {
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 1,
-      child: DecoratedBox(
+      child: Hero(
+        tag: novaArtHero,
+        // Material biar teks di dalam cover gak dapet garis bawah kuning pas terbang.
+        flightShuttleBuilder: (_, __, dir, from, to) => Material(
+          type: MaterialType.transparency,
+          child: ((dir == HeroFlightDirection.push ? to : from).widget as Hero).child,
+        ),
+        child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(24),
           boxShadow: const [BoxShadow(color: Color(0x80000000), blurRadius: 50, offset: Offset(0, 24))],
@@ -161,6 +169,7 @@ class _Cover extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

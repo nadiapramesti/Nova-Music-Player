@@ -107,9 +107,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   padding: EdgeInsets.fromLTRB(20, top + 14, 20, 0),
                   child: Row(
                     children: [
+                      const NovaMark(size: 32),
+                      const SizedBox(width: 6),
                       Text('nova', style: disp(26, spacing: -1)),
-                      const SizedBox(width: 3),
-                      const NovaStar(size: 18),
                       const Spacer(),
                       _ScanButton(onTap: () => library.load(ask: false)),
                     ],
@@ -161,7 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () => playAndOpen(context, sorted, i, from: from),
                 ),
               ),
-              const SliverToBoxAdapter(child: SizedBox(height: 120)),
+              const SliverToBoxAdapter(child: SizedBox(height: 200)),
             ],
           ),
         ),

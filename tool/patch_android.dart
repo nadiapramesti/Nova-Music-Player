@@ -44,7 +44,7 @@ const _star = '''<?xml version="1.0" encoding="utf-8"?>
 const _launchBg = '''<?xml version="1.0" encoding="utf-8"?>
 <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
     <item android:drawable="@color/nova_bg"/>
-    <item android:drawable="@drawable/nova_star" android:gravity="center"
+    <item android:drawable="@drawable/ic_launcher_fg" android:gravity="center"
         android:width="108dp" android:height="108dp"/>
 </layer-list>
 ''';
@@ -71,7 +71,7 @@ const _styles31 = '''<?xml version="1.0" encoding="utf-8"?>
     <style name="LaunchTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:windowSplashScreenBackground">@color/nova_bg</item>
-        <item name="android:windowSplashScreenAnimatedIcon">@drawable/nova_star</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_fg</item>
     </style>
     <style name="NormalTheme" parent="@android:style/Theme.Black.NoTitleBar">
         <item name="android:windowBackground">@color/nova_bg</item>
@@ -96,6 +96,61 @@ void patchSplash() {
   _write('$res/values-v31/styles.xml', _styles31);
   _write('$res/values-night-v31/styles.xml', _styles31);
   stdout.writeln('+ splash gelap + bintang Nova');
+}
+
+// ---- Ikon launcher: headset + bintang (adaptive icon, Android 8+) ----
+const _iconFg = '''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#00000000" android:strokeColor="#ECEEF5"
+        android:strokeWidth="5" android:strokeLineCap="round"
+        android:pathData="M34,60 L34,52 A20,20 0 0 1 74,52 L74,60"/>
+    <path android:fillColor="#ECEEF5"
+        android:pathData="M32,56h4a4,4 0 0 1 4,4v12a4,4 0 0 1 -4,4h-4a4,4 0 0 1 -4,-4v-12a4,4 0 0 1 4,-4z"/>
+    <path android:fillColor="#ECEEF5"
+        android:pathData="M72,56h4a4,4 0 0 1 4,4v12a4,4 0 0 1 -4,4h-4a4,4 0 0 1 -4,-4v-12a4,4 0 0 1 4,-4z"/>
+    <group android:translateX="45" android:translateY="55" android:scaleX="0.75" android:scaleY="0.75">
+        <path android:fillColor="#AEB9FF"
+            android:pathData="M12,1.5C12.6,7.1 16.9,11.4 22.5,12C16.9,12.6 12.6,16.9 12,22.5C11.4,16.9 7.1,12.6 1.5,12C7.1,11.4 11.4,7.1 12,1.5Z"/>
+    </group>
+</vector>
+''';
+
+const _iconBg = '''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#0A0B0F" android:pathData="M0,0h108v108h-108z"/>
+    <path android:pathData="M0,0h108v108h-108z">
+        <aapt:attr name="android:fillColor">
+            <gradient android:type="radial" android:centerX="54" android:centerY="44"
+                android:gradientRadius="58" android:startColor="#3C4479" android:endColor="#000A0B0F"/>
+        </aapt:attr>
+    </path>
+</vector>
+''';
+
+const _adaptive = '''<?xml version="1.0" encoding="utf-8"?>
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@drawable/ic_launcher_bg"/>
+    <foreground android:drawable="@drawable/ic_launcher_fg"/>
+    <monochrome android:drawable="@drawable/ic_launcher_fg"/>
+</adaptive-icon>
+''';
+
+void patchIcon() {
+  const res = 'android/app/src/main/res';
+  _write('$res/drawable/ic_launcher_fg.xml', _iconFg);
+  _write('$res/drawable/ic_launcher_bg.xml', _iconBg);
+  _write('$res/mipmap-anydpi-v26/ic_launcher.xml', _adaptive);
+  // PNG lama (Android < 8) diganti versi Nova kalau ada di tool/icons/.
+  for (final d in ['mdpi', 'hdpi', 'xhdpi', 'xxhdpi', 'xxxhdpi']) {
+    final src = File('tool/icons/ic_launcher-$d.png');
+    if (src.existsSync()) src.copySync('$res/mipmap-$d/ic_launcher.png');
+  }
+  stdout.writeln('+ ikon launcher headset + bintang');
 }
 
 void main() {
@@ -141,6 +196,7 @@ void main() {
   }
 
   patchSplash();
+  patchIcon();
 
   stdout.writeln('Beres. Lanjut: flutter pub get');
 }

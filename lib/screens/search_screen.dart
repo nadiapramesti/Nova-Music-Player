@@ -54,7 +54,7 @@ class _SearchScreenState extends State<SearchScreen> {
             const Glow(top: 20, left: -110, size: 360),
             ListView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 120),
+              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 200),
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),

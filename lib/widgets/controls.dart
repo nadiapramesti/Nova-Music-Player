@@ -36,6 +36,61 @@ class _StarPainter extends CustomPainter {
   bool shouldRepaint(_StarPainter old) => old.color != color;
 }
 
+/// Logo Nova: headset + bintang kecil di tengah.
+class NovaMark extends StatelessWidget {
+  const NovaMark({super.key, this.size = 28});
+  final double size;
+
+  @override
+  Widget build(BuildContext context) =>
+      CustomPaint(size: Size.square(size), painter: _MarkPainter());
+}
+
+class _MarkPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Digambar di kotak 56 unit (bagian tengah ikon launcher 108 unit).
+    final k = size.width / 56;
+    Offset p(double x, double y) => Offset((x - 26) * k, (y - 26) * k);
+
+    final band = Path()
+      ..moveTo(p(34, 60).dx, p(34, 60).dy)
+      ..lineTo(p(34, 52).dx, p(34, 52).dy)
+      ..arcToPoint(p(74, 52), radius: Radius.circular(20 * k), clockwise: true)
+      ..lineTo(p(74, 60).dx, p(74, 60).dy);
+    canvas.drawPath(
+      band,
+      Paint()
+        ..color = Nv.text
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5 * k
+        ..strokeCap = StrokeCap.round,
+    );
+
+    final cup = Paint()..color = Nv.text;
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromPoints(p(28, 56), p(40, 76)), Radius.circular(4 * k)), cup);
+    canvas.drawRRect(RRect.fromRectAndRadius(Rect.fromPoints(p(68, 56), p(80, 76)), Radius.circular(4 * k)), cup);
+
+    // Bintang 24 unit, digeser ke (45,55) dan diperkecil 0.75.
+    Offset s(double x, double y) => p(45 + x * 0.75, 55 + y * 0.75);
+    final star = Path()..moveTo(s(12, 1.5).dx, s(12, 1.5).dy);
+    void c(double a, double b, double cc, double d, double e, double f) {
+      final p1 = s(a, b), p2 = s(cc, d), p3 = s(e, f);
+      star.cubicTo(p1.dx, p1.dy, p2.dx, p2.dy, p3.dx, p3.dy);
+    }
+
+    c(12.6, 7.1, 16.9, 11.4, 22.5, 12);
+    c(16.9, 12.6, 12.6, 16.9, 12, 22.5);
+    c(11.4, 16.9, 7.1, 12.6, 1.5, 12);
+    c(7.1, 11.4, 11.4, 7.1, 12, 1.5);
+    star.close();
+    canvas.drawPath(star, Paint()..color = Nv.accent);
+  }
+
+  @override
+  bool shouldRepaint(_MarkPainter old) => false;
+}
+
 /// Tombol bulat kaca (tutup, antrean, dll).
 class GlassCircleButton extends StatelessWidget {
   const GlassCircleButton({

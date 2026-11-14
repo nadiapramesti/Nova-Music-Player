@@ -80,10 +80,10 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Transform.rotate(
-                    angle: (1 - star.value) * 1.6,
+                    angle: (1 - star.value) * -0.5,
                     child: Transform.scale(
                       scale: star.value.clamp(0.0, 1.2),
-                      child: const NovaStar(size: 64),
+                      child: const NovaMark(size: 92),
                     ),
                   ),
                   const SizedBox(height: 18),

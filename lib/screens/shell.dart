@@ -17,6 +17,8 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _tab = 0;
 
+  static const _pages = [HomeScreen(), ShelfScreen(), SearchScreen()];
+
   @override
   void initState() {
     super.initState();
@@ -37,10 +39,28 @@ class _ShellState extends State<Shell> {
         resizeToAvoidBottomInset: false,
         body: Stack(
           children: [
-            IndexedStack(
-              index: _tab,
-              children: const [HomeScreen(), ShelfScreen(), SearchScreen()],
-            ),
+            // Semua tab tetap hidup (scroll & isian gak ke-reset),
+            // pindahnya pakai geser + pudar ke arah tab tujuan.
+            for (var i = 0; i < _pages.length; i++)
+              Positioned.fill(
+                child: IgnorePointer(
+                  ignoring: i != _tab,
+                  child: TickerMode(
+                    enabled: i == _tab,
+                    child: AnimatedSlide(
+                      offset: i == _tab ? Offset.zero : Offset(i < _tab ? -0.08 : 0.08, 0),
+                      duration: const Duration(milliseconds: 360),
+                      curve: Curves.easeOutCubic,
+                      child: AnimatedOpacity(
+                        opacity: i == _tab ? 1 : 0,
+                        duration: const Duration(milliseconds: 260),
+                        curve: Curves.easeOut,
+                        child: _pages[i],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             Positioned(
               left: 12,
               right: 12,

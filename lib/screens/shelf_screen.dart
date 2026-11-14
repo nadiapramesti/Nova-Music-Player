@@ -71,7 +71,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
             const Glow(top: -120, right: -140, size: 380),
             const Glow(top: 420, left: -160, size: 360, color: Nv.glowSoft),
             ListView(
-              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 120),
+              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 200),
               children: [
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
