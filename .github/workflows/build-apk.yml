@@ -1,11 +1,11 @@
 name: Build APK
 
-# Push ke main: cuma dicek (analyze + test + build), gak bikin rilis.
-# Tag v* (contoh v1.0.0): bikin rilis "Nova v1.0.0" berisi APK-nya.
+# Tiap push ke main dicek (analyze + test + build).
+# Rilis baru cuma dibuat kalau `version:` di pubspec.yaml naik (contoh 1.0.0 → 1.0.1):
+# hasilnya rilis "Nova v1.0.1" berisi Nova-1.0.1.apk.
 on:
   push:
     branches: [main]
-    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -39,21 +39,31 @@ jobs:
       - name: Test
         run: flutter test
 
-      - name: Build APK
+      - name: Cek versi
+        id: ver
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            VERSION="${GITHUB_REF_NAME#v}"
-            flutter build apk --release --build-name="$VERSION" --build-number=${{ github.run_number }}
-            cp build/app/outputs/flutter-apk/app-release.apk "Nova-$VERSION.apk"
+          VERSION=$(grep -m1 '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*//; s/\+.*//')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "v$VERSION udah dirilis, cuma dicek."
           else
-            flutter build apk --release
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            echo "Versi baru v$VERSION, bakal dirilis."
           fi
 
+      - name: Build APK
+        run: |
+          flutter build apk --release --build-number=${{ github.run_number }}
+          cp build/app/outputs/flutter-apk/app-release.apk "Nova-${{ steps.ver.outputs.version }}.apk"
+
       - name: Rilis APK
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: steps.ver.outputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          name: Nova ${{ github.ref_name }}
+          tag_name: v${{ steps.ver.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: Nova v${{ steps.ver.outputs.version }}
           body: |
             Download **Nova-*.apk** di bawah, lalu buka file-nya di HP buat install.
 
