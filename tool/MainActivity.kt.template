@@ -238,7 +238,7 @@ object NovaOverlay {
     private var ctx: Context? = null
     private val main = Handler(Looper.getMainLooper())
     private var appVisible = true
-    private var mode = Mode.PILL
+    private var mode = Mode.HIDDEN
     private var testUntil = 0L
 
     private var songId = -1L
@@ -334,7 +334,7 @@ object NovaOverlay {
         if (!canDraw(c)) return "Izin \"tampil di atas aplikasi lain\" belum aktif"
         if (songId < 0) return "Putar satu lagu dulu"
         testUntil = System.currentTimeMillis() + 5000
-        mode = Mode.PILL
+        mode = Mode.EXPANDED
         main.postDelayed({ refresh() }, 5100)
         return refresh()
     }
@@ -383,13 +383,7 @@ object NovaOverlay {
             override fun onDown(e: MotionEvent): Boolean = true
 
             override fun onSingleTapUp(e: MotionEvent): Boolean {
-                setMode(
-                    when (mode) {
-                        Mode.HIDDEN -> Mode.PILL
-                        Mode.PILL -> Mode.EXPANDED
-                        Mode.EXPANDED -> Mode.PILL
-                    }
-                )
+                setMode(if (mode == Mode.HIDDEN) Mode.EXPANDED else Mode.HIDDEN)
                 return true
             }
 
@@ -411,7 +405,7 @@ object NovaOverlay {
         })
         frame.setOnTouchListener { _, ev ->
             if (ev.action == MotionEvent.ACTION_OUTSIDE) {
-                if (mode == Mode.EXPANDED) setMode(Mode.PILL)
+                if (mode == Mode.EXPANDED) setMode(Mode.HIDDEN)
                 true
             } else {
                 gestures.onTouchEvent(ev)
@@ -483,22 +477,19 @@ object NovaOverlay {
         val screenW = c.resources.displayMetrics.widthPixels
 
         val child: View = when (mode) {
-            Mode.HIDDEN -> {
-                p.width = dp(64f)
-                p.height = dp(22f)
-                p.y = maxOf(dp(4f), (statusH - dp(22f)) / 2)
+            // Kapsul kecil ngelilingin lubang kamera: cover di kiri, equalizer di kanan,
+            // tengahnya kosong biar gak ketutup kamera.
+            Mode.HIDDEN, Mode.PILL -> {
+                p.width = dp(104f)
+                p.height = dp(28f)
+                p.y = maxOf(dp(4f), (statusH - dp(28f)) / 2)
                 hiddenView(c)
             }
-            Mode.PILL -> {
-                p.width = dp(220f)
-                p.height = dp(34f)
-                p.y = maxOf(dp(4f), (statusH - dp(34f)) / 2)
-                pillView(c)
-            }
+            // Kartu pemutar ngambang di bawah status bar.
             Mode.EXPANDED -> {
                 p.width = screenW - dp(20f)
                 p.height = WindowManager.LayoutParams.WRAP_CONTENT
-                p.y = maxOf(dp(6f), (statusH - dp(34f)) / 2)
+                p.y = statusH + dp(8f)
                 expandedView(c)
             }
         }
@@ -559,10 +550,26 @@ object NovaOverlay {
             layoutParams = LinearLayout.LayoutParams(dp(size), dp(size))
         }
 
-    private fun hiddenView(c: Context): View = FrameLayout(c).apply {
-        background = panelBg(11f)
-        contentDescription = "Nova: tampilkan pulau"
-        addView(View(c).apply { background = circle(accent) }, FrameLayout.LayoutParams(dp(6f), dp(6f), Gravity.CENTER))
+    private fun hiddenView(c: Context): View = LinearLayout(c).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(4f), 0, dp(10f), 0)
+        background = panelBg(14f)
+        contentDescription = "Nova: $title. Tap buat kontrol lagu"
+        addView(coverView(c, 20f, true))
+        addView(View(c), LinearLayout.LayoutParams(0, 1, 1f))
+        val barColor = if (playing) accent else muted
+        for ((i, h) in listOf(7f, 12f, 9f).withIndex()) {
+            addView(
+                View(c).apply {
+                    background = GradientDrawable().apply {
+                        setColor(barColor)
+                        cornerRadius = dp(1.5f).toFloat()
+                    }
+                },
+                LinearLayout.LayoutParams(dp(3f), dp(h)).apply { if (i > 0) marginStart = dp(2f) },
+            )
+        }
     }
 
     private fun pillView(c: Context): View = LinearLayout(c).apply {
@@ -664,7 +671,7 @@ object NovaOverlay {
                         cornerRadius = dp(23f).toFloat()
                     }
                     setOnClickListener {
-                        mode = Mode.PILL
+                        mode = Mode.HIDDEN
                         openApp(c)
                     }
                     layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(46f))

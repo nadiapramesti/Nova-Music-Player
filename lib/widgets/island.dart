@@ -65,7 +65,7 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final top = mq.padding.top;
-    const collapsedH = 34.0;
+    const collapsedH = 28.0;
     const expandedH = 188.0;
     // Pas di tengah area status bar / lubang kamera.
     final y = max(6.0, (top - collapsedH) / 2);
@@ -85,8 +85,12 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
                   child: const ColoredBox(color: Color(0x73000000)),
                 ),
               ),
-            Positioned(
-              top: y,
+            // Kapsul di lubang kamera; pas dibuka, kartunya turun ke bawah status bar
+            // biar gak ketutup kamera.
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutCubic,
+              top: _open ? top + 8 : y,
               left: 0,
               right: 0,
               child: Center(
@@ -105,7 +109,7 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
                       onEnd: () {
                         if (mounted) setState(() => _showFull = _open);
                       },
-                      width: _open ? mq.size.width - 20 : 200,
+                      width: _open ? mq.size.width - 20 : 104,
                       height: _open ? expandedH : collapsedH,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
@@ -147,17 +151,13 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
     }
     if (_showFull) return const SizedBox.shrink(); // lagi menyusut
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: Row(
         children: [
-          ClipOval(child: Art(songId: song.id, size: 24, radius: 0)),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(song.title,
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(11.5, w: 700)),
-          ),
-          const SizedBox(width: 8),
-          _EqBars(controller: _eq, height: 14),
+          // Tengah dikosongin buat lubang kamera.
+          ClipOval(child: Art(songId: song.id, size: 20, radius: 0)),
+          const Spacer(),
+          _EqBars(controller: _eq, height: 12),
           const SizedBox(width: 6),
         ],
       ),
