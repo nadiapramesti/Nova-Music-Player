@@ -39,6 +39,10 @@ jobs:
         run: |
           flutter create --org com.nadia --project-name nova --platforms android .
           dart tool/patch_android.dart
+          # Khusus emulator CI (GPU software): render pakai OpenGL, bukan Impeller/Vulkan.
+          sed -i 's#<application#<application#' android/app/src/main/AndroidManifest.xml
+          sed -i 's#</application>#    <meta-data android:name="io.flutter.embedding.android.EnableImpeller" android:value="false"/>\n    </application>#' android/app/src/main/AndroidManifest.xml
+          grep -n "EnableImpeller" android/app/src/main/AndroidManifest.xml
           flutter pub get
 
       # Build dulu sebelum emulator nyala, lalu matiin Gradle biar RAM runner cukup.
@@ -59,7 +63,7 @@ jobs:
           ram-size: 2048M
           disk-size: 4096M
           disable-animations: false
-          emulator-options: -no-metrics -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-metrics -no-window -gpu swiftshader_indirect -feature -Vulkan -noaudio -no-boot-anim -camera-back none
           script: flutter drive --driver=test_driver/integration_test.dart --target=integration_test/screenshots_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk
 
       - name: Rilis screenshot
