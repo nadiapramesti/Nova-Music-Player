@@ -18,24 +18,32 @@ void showSettingsSheet(BuildContext context) {
         radius: 28,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: SingleChildScrollView(child: ListenableBuilder(
-          listenable: Listenable.merge([island, library]),
+          listenable: Listenable.merge([island, library, coverTint]),
           builder: (context, _) => Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text('PENGATURAN', style: mono(11, spacing: 1.2)),
               const SizedBox(height: 4),
+              Text('Tampilan', style: disp(24, spacing: -0.6)),
+              const SizedBox(height: 14),
+              _Toggle(
+                title: 'Warna ikut cover',
+                body: 'Warna aksen Nova berubah ngikutin cover lagu yang diputar. '
+                    'Cover hitam-putih tetap pakai biru Nova.',
+                value: coverTint.enabled,
+                onChanged: coverTint.setEnabled,
+              ),
               if (kDemo) ...[
-                Text('Tampilan (mode demo)', style: disp(24, spacing: -0.6)),
-                const SizedBox(height: 14),
+                const SizedBox(height: 10),
                 _Toggle(
                   title: 'Tema terang',
                   body: 'Buat perbandingan screenshot. Cuma ada di mode demo; versi biasa selalu gelap.',
                   value: Nv.isLight,
                   onChanged: (v) => setPalette(v ? Palette.light : Palette.dark),
                 ),
-                const SizedBox(height: 22),
               ],
+              const SizedBox(height: 22),
               Text('Pustaka', style: disp(24, spacing: -0.6)),
               const SizedBox(height: 14),
               ActionTile(

@@ -20,10 +20,11 @@ Future<void> main() async {
   await stats.init();
   await playlists.init();
   await island.init(audio, stats);
+  await coverTint.init();
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   // Produksi selalu gelap. Mode demo bisa mulai terang: --dart-define=DEMO_THEME=light
-  if (kDemo && kDemoTheme == 'light') Nv.p = Palette.light;
+  if (kDemo && kDemoTheme == 'light') Nv.p = Nv.base = Palette.light;
   applySystemBars();
 
   runApp(const NovaApp());

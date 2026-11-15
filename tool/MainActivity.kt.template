@@ -138,6 +138,7 @@ class MainActivity : AudioServiceActivity() {
                         title = call.argument<String>("title") ?: "",
                         artist = call.argument<String>("artist") ?: "",
                         playing = call.argument<Boolean>("playing") ?: false,
+                        accentColor = call.argument<Number>("accent")?.toLong()?.toInt(),
                     )
                     result.success(null)
                 }
@@ -482,7 +483,7 @@ object NovaOverlay {
 
     private val text = Color.rgb(236, 238, 245)
     private val muted = Color.rgb(143, 149, 168)
-    private val accent = Color.rgb(174, 185, 255)
+    private var accent = Color.rgb(174, 185, 255)
     private val onAccent = Color.rgb(12, 16, 48)
 
     fun init(c: Context) {
@@ -572,8 +573,12 @@ object NovaOverlay {
         refresh()
     }
 
-    fun update(id: Long, title: String, artist: String, playing: Boolean) {
+    fun update(id: Long, title: String, artist: String, playing: Boolean, accentColor: Int? = null) {
         val changed = id != songId
+        val colorChanged = accentColor != null && accentColor != accent
+        if (accentColor != null) accent = accentColor
+        // Gak ada yang berubah → gak usah gambar ulang (timer sembunyi gak ke-reset).
+        if (!changed && !colorChanged && playing == this.playing && title == this.title && artist == this.artist) return
         if (changed || playing != this.playing) wake()
         songId = id
         this.title = title

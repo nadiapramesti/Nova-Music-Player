@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../demo/demo.dart';
+import '../theme.dart';
 import 'player_service.dart';
 import 'stats_service.dart';
 
@@ -50,8 +51,11 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
           'title': audio.current.value?.title ?? '',
           'artist': audio.current.value?.artist ?? '',
           'playing': audio.player.playing,
+          'accent': Nv.accent.toARGB32(),
         });
     audio.current.addListener(push);
+    // Aksen ikut cover → kartu di luar app ikut ganti warna.
+    paletteVersion.addListener(push);
     audio.player.playingStream.listen((_) => push());
 
     // Progres & favorit buat kartu di luar app (dikirim tiap ganti detik).

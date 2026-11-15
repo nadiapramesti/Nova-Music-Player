@@ -29,6 +29,30 @@ class Palette {
     required this.scrim,
   });
 
+  /// Palet yang sama, aksennya diganti (dipakai buat warna ikut cover).
+  Palette withAccent(Color a, Color on) => Palette(
+        brightness: brightness,
+        bg: bg,
+        text: text,
+        muted: muted,
+        accent: a,
+        onAccent: on,
+        accentSoft: a.withAlpha((accentSoft.a * 255).round()),
+        line: line,
+        rule: rule,
+        track: track,
+        chip: chip,
+        glass: glass,
+        glassStrong: glassStrong,
+        glassLine: glassLine,
+        cover: cover,
+        coverAlt: coverAlt,
+        coverBig: coverBig,
+        glow: a.withAlpha((glow.a * 255).round()),
+        glowSoft: a.withAlpha((glowSoft.a * 255).round()),
+        scrim: scrim,
+      );
+
   final Brightness brightness;
   final Color bg, text, muted, accent, onAccent, accentSoft, line, rule, track, chip;
   final Color glass, glassStrong, glassLine, cover, coverAlt, coverBig, glow, glowSoft, scrim;
@@ -86,6 +110,9 @@ class Palette {
 class Nv {
   static Palette p = Palette.dark;
 
+  /// Palet dasar (gelap/terang) sebelum aksen ikut cover.
+  static Palette base = Palette.dark;
+
   static Color get bg => p.bg;
   static Color get text => p.text;
   static Color get muted => p.muted;
@@ -111,9 +138,48 @@ class Nv {
 /// Dinaikkan tiap palet berganti; root app dengerin ini lalu bangun ulang semua layar.
 final paletteVersion = ValueNotifier<int>(0);
 
+/// Ganti palet dasar (mode demo). Aksen dari cover tetap dipasang di atasnya.
 void setPalette(Palette palette) {
-  if (identical(Nv.p, palette)) return;
-  Nv.p = palette;
+  Nv.base = palette;
+  _applyPalette();
+}
+
+Color? _tint;
+
+/// Atur terang-gelap warna cover biar tetap kebaca di palet ini.
+Color tuneAccent(Color raw, Brightness brightness) {
+  final hsl = HSLColor.fromColor(raw);
+  if (brightness == Brightness.dark) {
+    return hsl.withSaturation(hsl.saturation.clamp(0.45, 0.9)).withLightness(0.76).toColor();
+  }
+  return hsl.withSaturation(hsl.saturation.clamp(0.5, 0.85)).withLightness(0.4).toColor();
+}
+
+/// Teks/ikon di atas tombol beraksen.
+Color onAccentFor(Color accent, Brightness brightness) {
+  if (brightness == Brightness.light) return const Color(0xFFFFFFFF);
+  return HSLColor.fromColor(accent).withSaturation(0.55).withLightness(0.1).toColor();
+}
+
+
+/// Pasang warna mentah dari cover sebagai aksen (null = balik ke biru Nova).
+void setAccentTint(Color? raw) {
+  if (raw == _tint) return;
+  _tint = raw;
+  _applyPalette();
+}
+
+void _applyPalette() {
+  final base = Nv.base;
+  final raw = _tint;
+  Palette next = base;
+  if (raw != null) {
+    final a = tuneAccent(raw, base.brightness);
+    next = base.withAccent(a, onAccentFor(a, base.brightness));
+  }
+  if (identical(Nv.p, next)) return;
+  if (Nv.p.brightness == next.brightness && Nv.p.accent == next.accent && Nv.p.bg == next.bg) return;
+  Nv.p = next;
   applySystemBars();
   paletteVersion.value++;
   // Warna dibaca langsung dari Nv di tiap build, jadi semua layar (termasuk widget const
