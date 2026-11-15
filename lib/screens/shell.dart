@@ -50,23 +50,7 @@ class _ShellState extends State<Shell> {
             // pindahnya pakai geser + pudar ke arah tab tujuan.
             for (var i = 0; i < _pages.length; i++)
               Positioned.fill(
-                child: IgnorePointer(
-                  ignoring: i != _tab,
-                  child: TickerMode(
-                    enabled: i == _tab,
-                    child: AnimatedSlide(
-                      offset: i == _tab ? Offset.zero : Offset(i < _tab ? -0.08 : 0.08, 0),
-                      duration: const Duration(milliseconds: 360),
-                      curve: Curves.easeOutCubic,
-                      child: AnimatedOpacity(
-                        opacity: i == _tab ? 1 : 0,
-                        duration: const Duration(milliseconds: 260),
-                        curve: Curves.easeOut,
-                        child: _pages[i],
-                      ),
-                    ),
-                  ),
-                ),
+                child: _TabPage(active: i == _tab, fromLeft: i < _tab, child: _pages[i]),
               ),
             Positioned(
               left: 12,
@@ -78,6 +62,66 @@ class _ShellState extends State<Shell> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Satu tab: geser + pudar saat pindah, lalu benar-benar disembunyikan (Offstage)
+/// setelah animasi keluar selesai. State halaman tetap hidup.
+class _TabPage extends StatefulWidget {
+  const _TabPage({required this.active, required this.fromLeft, required this.child});
+  final bool active;
+  final bool fromLeft;
+  final Widget child;
+
+  @override
+  State<_TabPage> createState() => _TabPageState();
+}
+
+class _TabPageState extends State<_TabPage> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 340),
+    value: widget.active ? 1 : 0,
+  );
+
+  @override
+  void didUpdateWidget(_TabPage old) {
+    super.didUpdateWidget(old);
+    if (widget.active != old.active) {
+      widget.active ? _c.forward() : _c.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _c,
+      child: widget.child,
+      builder: (context, child) {
+        final v = Curves.easeOutCubic.transform(_c.value);
+        final hidden = _c.value == 0 && !widget.active;
+        final dx = (1 - v) * (widget.fromLeft ? -28.0 : 28.0);
+        return Offstage(
+          offstage: hidden,
+          child: IgnorePointer(
+            ignoring: !widget.active,
+            child: TickerMode(
+              enabled: !hidden,
+              child: Opacity(
+                opacity: v,
+                child: Transform.translate(offset: Offset(dx, 0), child: child),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
