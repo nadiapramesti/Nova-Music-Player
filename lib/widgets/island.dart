@@ -65,10 +65,11 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final top = mq.padding.top;
-    const collapsedH = 28.0;
+    // Area status bar gak nerima tap, jadi kapsul dipanjangin 18 ke bawah garis status bar.
+    final collapsedH = max(40.0, top - max(6.0, (top - 28) / 2) + 18);
     const expandedH = 188.0;
     // Pas di tengah area status bar / lubang kamera.
-    final y = max(6.0, (top - collapsedH) / 2);
+    final y = max(6.0, (top - 28) / 2);
 
     return ListenableBuilder(
       listenable: Listenable.merge([audio.current, island]),
@@ -109,12 +110,12 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
                       onEnd: () {
                         if (mounted) setState(() => _showFull = _open);
                       },
-                      width: _open ? mq.size.width - 20 : 104,
+                      width: _open ? mq.size.width - 20 : 112,
                       height: _open ? expandedH : collapsedH,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: Colors.black,
-                        borderRadius: BorderRadius.circular(_open ? 36 : collapsedH / 2),
+                        borderRadius: BorderRadius.circular(_open ? 36 : 20),
                         border: Border.all(color: _open ? Nv.glassLine : const Color(0x14FFFFFF)),
                         boxShadow: _open
                             ? const [BoxShadow(color: Color(0x80000000), blurRadius: 40, offset: Offset(0, 16))]
@@ -151,13 +152,17 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
     }
     if (_showFull) return const SizedBox.shrink(); // lagi menyusut
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Tengah dikosongin buat lubang kamera.
-          ClipOval(child: Art(songId: song.id, size: 20, radius: 0)),
+          ClipOval(child: Art(songId: song.id, size: 22, radius: 0)),
           const Spacer(),
-          _EqBars(controller: _eq, height: 12),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 5),
+            child: _EqBars(controller: _eq, height: 12),
+          ),
           const SizedBox(width: 6),
         ],
       ),

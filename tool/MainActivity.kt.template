@@ -479,10 +479,12 @@ object NovaOverlay {
         val child: View = when (mode) {
             // Kapsul kecil ngelilingin lubang kamera: cover di kiri, equalizer di kanan,
             // tengahnya kosong biar gak ketutup kamera.
+            // Sentuhan di area status bar diambil sistem, jadi kapsulnya dipanjangin
+            // ~18dp ke bawah garis status bar: bagian itu yang bisa di-tap.
             Mode.HIDDEN, Mode.PILL -> {
-                p.width = dp(104f)
-                p.height = dp(28f)
+                p.width = dp(112f)
                 p.y = maxOf(dp(4f), (statusH - dp(28f)) / 2)
+                p.height = maxOf(dp(40f), statusH - p.y + dp(18f))
                 hiddenView(c)
             }
             // Kartu pemutar ngambang di bawah status bar.
@@ -553,10 +555,11 @@ object NovaOverlay {
     private fun hiddenView(c: Context): View = LinearLayout(c).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(4f), 0, dp(10f), 0)
-        background = panelBg(14f)
+        setPadding(dp(6f), dp(6f), dp(12f), dp(6f))
+        gravity = Gravity.BOTTOM
+        background = panelBg(20f)
         contentDescription = "Nova: $title. Tap buat kontrol lagu"
-        addView(coverView(c, 20f, true))
+        addView(coverView(c, 22f, true))
         addView(View(c), LinearLayout.LayoutParams(0, 1, 1f))
         val barColor = if (playing) accent else muted
         for ((i, h) in listOf(7f, 12f, 9f).withIndex()) {
@@ -567,7 +570,10 @@ object NovaOverlay {
                         cornerRadius = dp(1.5f).toFloat()
                     }
                 },
-                LinearLayout.LayoutParams(dp(3f), dp(h)).apply { if (i > 0) marginStart = dp(2f) },
+                LinearLayout.LayoutParams(dp(3f), dp(h)).apply {
+                    if (i > 0) marginStart = dp(2f)
+                    bottomMargin = dp(5f)
+                },
             )
         }
     }
