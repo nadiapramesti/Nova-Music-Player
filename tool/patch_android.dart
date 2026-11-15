@@ -186,6 +186,29 @@ void patchAccessibility(String manifestPath) {
   stdout.writeln('+ layanan Aksesibilitas pulau di notch');
 }
 
+// ---- Izin HTTP cuma ke 127.0.0.1: audio senyap mode demo diputar lewat proxy lokal just_audio ----
+const _netConfig = '''<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>
+''';
+
+void patchNetworkConfig(String manifestPath) {
+  _write('android/app/src/main/res/xml/network_security_config.xml', _netConfig);
+  final f = File(manifestPath);
+  final m = f.readAsStringSync();
+  if (!m.contains('networkSecurityConfig')) {
+    f.writeAsStringSync(m.replaceFirst(
+      '<application',
+      '<application\n        android:networkSecurityConfig="@xml/network_security_config"',
+    ));
+  }
+  stdout.writeln('+ HTTP lokal (127.0.0.1) buat audio mode demo');
+}
+
 void unpatchAccessibility(String manifestPath) {
   final f = File(manifestPath);
   final m = f.readAsStringSync();
@@ -256,6 +279,7 @@ void main(List<String> args) {
 
   patchSplash();
   patchIcon();
+  patchNetworkConfig(manifest.path);
   // Layanan Aksesibilitas bikin APK sideload diblok Play Protect, jadi cuma dipasang
   // kalau diminta:  dart tool/patch_android.dart --a11y
   if (args.contains('--a11y')) {

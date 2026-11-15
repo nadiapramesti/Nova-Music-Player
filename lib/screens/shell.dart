@@ -32,16 +32,20 @@ class _ShellState extends State<Shell> {
 
   /// Mode demo: satu lagu langsung jalan dengan progres sekitar setengah,
   /// antrean = seluruh daftar, biar layar pemutar & antrean langsung terisi.
-  void _startDemoPlayback() {
+  Future<void> _startDemoPlayback() async {
     final songs = library.songs;
     if (songs.length < 3) return;
     const index = 2;
-    audio.playQueue(
-      songs,
-      index,
-      from: 'Daftar putar · Terbaru',
-      startAt: Duration(milliseconds: (songs[index].durationMs * 0.46).round()),
-    );
+    try {
+      await audio.playQueue(
+        songs,
+        index,
+        from: 'Daftar putar · Terbaru',
+        startAt: Duration(milliseconds: (songs[index].durationMs * 0.46).round()),
+      );
+    } catch (e) {
+      debugPrint('Demo: gagal mulai audio senyap: $e');
+    }
   }
 
   @override
