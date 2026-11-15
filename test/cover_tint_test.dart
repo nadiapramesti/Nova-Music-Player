@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:ui' show Brightness;
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
