@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../demo/demo.dart';
+import '../demo/demo_data.dart';
 import '../models.dart';
 
 enum LibraryStatus { loading, needPermission, ready, error }
@@ -26,6 +28,13 @@ class LibraryService extends ChangeNotifier {
   Future<void> load({bool ask = true}) async {
     status = LibraryStatus.loading;
     notifyListeners();
+    if (kDemo) {
+      // Mode demo: lagu rekaan, tanpa izin & tanpa baca file di HP.
+      songs = demoSongs();
+      status = LibraryStatus.ready;
+      notifyListeners();
+      return;
+    }
     try {
       if (!await _granted(ask: ask)) {
         status = LibraryStatus.needPermission;
@@ -48,6 +57,7 @@ class LibraryService extends ChangeNotifier {
 
   /// Sembunyikan app tanpa menutupnya (musik tetap jalan).
   Future<void> moveToBack() async {
+    if (kDemo) return;
     try {
       await _ch.invokeMethod<void>('moveToBack');
     } catch (_) {}
@@ -77,6 +87,7 @@ class Artwork {
   static final _cache = <String, Future<Uint8List?>>{};
 
   static Future<Uint8List?> of(int songId, int size) {
+    if (kDemo) return Future.value(null);
     return _cache.putIfAbsent('$songId@$size', () async {
       try {
         return await _ch.invokeMethod<Uint8List>('artwork', {'id': songId, 'size': size});

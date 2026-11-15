@@ -4,13 +4,13 @@ import '../theme.dart';
 
 /// Bintang empat sudut di logo Nova.
 class NovaStar extends StatelessWidget {
-  const NovaStar({super.key, this.size = 18, this.color = Nv.accent});
+  const NovaStar({super.key, this.size = 18, this.color});
   final double size;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) =>
-      CustomPaint(size: Size.square(size), painter: _StarPainter(color));
+      CustomPaint(size: Size.square(size), painter: _StarPainter(color ?? Nv.accent));
 }
 
 class _StarPainter extends CustomPainter {
@@ -138,7 +138,7 @@ class RoundButton extends StatelessWidget {
     this.size = 48,
     this.iconSize = 22,
     this.fill = Colors.transparent,
-    this.fg = Nv.text,
+    this.fg,
     this.border,
     this.radius,
   });
@@ -149,7 +149,7 @@ class RoundButton extends StatelessWidget {
   final double size;
   final double iconSize;
   final Color fill;
-  final Color fg;
+  final Color? fg;
   final Color? border;
   final double? radius;
 
@@ -168,7 +168,7 @@ class RoundButton extends StatelessWidget {
         child: InkWell(
           borderRadius: r,
           onTap: onTap,
-          child: SizedBox.square(dimension: size, child: Icon(icon, size: iconSize, color: fg)),
+          child: SizedBox.square(dimension: size, child: Icon(icon, size: iconSize, color: fg ?? Nv.text)),
         ),
       ),
     );
@@ -199,7 +199,7 @@ class Pill extends StatelessWidget {
       color: selected ? Nv.text : Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: r,
-        side: selected ? BorderSide.none : const BorderSide(color: Nv.line, width: 1.5),
+        side: selected ? BorderSide.none : BorderSide(color: Nv.line, width: 1.5),
       ),
       child: InkWell(
         borderRadius: r,
@@ -246,7 +246,7 @@ class WideButton extends StatelessWidget {
       color: primary ? Nv.accent : Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: r,
-        side: primary ? BorderSide.none : const BorderSide(color: Nv.line, width: 1.5),
+        side: primary ? BorderSide.none : BorderSide(color: Nv.line, width: 1.5),
       ),
       child: InkWell(
         borderRadius: r,

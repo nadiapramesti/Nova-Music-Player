@@ -186,6 +186,16 @@ void patchAccessibility(String manifestPath) {
   stdout.writeln('+ layanan Aksesibilitas pulau di notch');
 }
 
+void unpatchAccessibility(String manifestPath) {
+  final f = File(manifestPath);
+  final m = f.readAsStringSync();
+  final cleaned = m.replaceAll(_a11yService, '');
+  if (cleaned != m) {
+    f.writeAsStringSync(cleaned);
+    stdout.writeln('- layanan Aksesibilitas dilepas (biar gak diblok Play Protect)');
+  }
+}
+
 void patchIcon() {
   const res = 'android/app/src/main/res';
   _write('$res/drawable/ic_launcher_fg.xml', _iconFg);
@@ -199,7 +209,7 @@ void patchIcon() {
   stdout.writeln('+ ikon launcher headset + bintang');
 }
 
-void main() {
+void main(List<String> args) {
   final manifest = File('android/app/src/main/AndroidManifest.xml');
   if (!manifest.existsSync()) {
     stderr.writeln('Folder android/ belum ada. Jalankan dulu:\n'
@@ -246,7 +256,13 @@ void main() {
 
   patchSplash();
   patchIcon();
-  patchAccessibility(manifest.path);
+  // Layanan Aksesibilitas bikin APK sideload diblok Play Protect, jadi cuma dipasang
+  // kalau diminta:  dart tool/patch_android.dart --a11y
+  if (args.contains('--a11y')) {
+    patchAccessibility(manifest.path);
+  } else {
+    unpatchAccessibility(manifest.path);
+  }
 
   stdout.writeln('Beres. Lanjut: flutter pub get');
 }

@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../demo/demo.dart';
+import '../demo/demo_cover.dart';
 import '../services/services.dart';
 import '../theme.dart';
 
@@ -24,6 +26,13 @@ class Art extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (kDemo) {
+      final cover = ClipRRect(
+        borderRadius: BorderRadius.circular(radius),
+        child: DemoCover(songId: songId),
+      );
+      return size == null ? cover : SizedBox.square(dimension: size, child: cover);
+    }
     final box = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: FutureBuilder<Uint8List?>(
@@ -32,7 +41,7 @@ class Art extends StatelessWidget {
           final bytes = snap.data;
           if (bytes == null) {
             return fallback ??
-                const DecoratedBox(
+                DecoratedBox(
                   decoration: BoxDecoration(color: Nv.cover),
                   child: SizedBox.expand(),
                 );

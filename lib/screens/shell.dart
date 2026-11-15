@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo/demo.dart';
 import '../services/services.dart';
 import '../widgets/deck.dart';
 import '../widgets/island.dart';
@@ -23,7 +24,24 @@ class _ShellState extends State<Shell> {
   void initState() {
     super.initState();
     // Minta izin + baca lagu setelah layar pertama tampil.
-    WidgetsBinding.instance.addPostFrameCallback((_) => library.load());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await library.load();
+      if (kDemo) _startDemoPlayback();
+    });
+  }
+
+  /// Mode demo: satu lagu langsung jalan dengan progres sekitar setengah,
+  /// antrean = seluruh daftar, biar layar pemutar & antrean langsung terisi.
+  void _startDemoPlayback() {
+    final songs = library.songs;
+    if (songs.length < 3) return;
+    const index = 2;
+    audio.playQueue(
+      songs,
+      index,
+      from: 'Daftar putar · Terbaru',
+      startAt: Duration(milliseconds: (songs[index].durationMs * 0.46).round()),
+    );
   }
 
   @override

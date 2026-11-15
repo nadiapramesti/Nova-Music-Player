@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../demo/demo.dart';
 import 'player_service.dart';
 
 /// Pengaturan pulau di notch:
@@ -24,6 +25,11 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
   bool _waitingPermission = false;
 
   Future<void> init(PlayerService audio) async {
+    if (kDemo) {
+      inApp = false;
+      outside = false;
+      return;
+    }
     final p = await SharedPreferences.getInstance();
     _p = p;
     inApp = p.getBool('islandInApp') ?? true;

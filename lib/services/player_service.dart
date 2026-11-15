@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
+import '../demo/demo.dart';
+import '../demo/silent_source.dart';
 import '../models.dart';
 import 'stats_service.dart';
 
@@ -33,18 +35,20 @@ class PlayerService {
 
   List<Song> get queue => _queue;
 
-  AudioSource _toSource(Song s) => AudioSource.uri(
-        Uri.parse(s.uri),
-        tag: MediaItem(
-          id: '${s.id}',
-          title: s.title,
-          artist: s.artist,
-          album: s.album,
-          duration: s.duration,
-        ),
-      );
+  AudioSource _toSource(Song s) {
+    final tag = MediaItem(
+      id: '${s.id}',
+      title: s.title,
+      artist: s.artist,
+      album: s.album,
+      duration: s.duration,
+    );
+    // Mode demo: audio senyap sepanjang durasi lagu (gak ada file asli).
+    if (kDemo) return SilentAudioSource(durationMs: s.durationMs, tag: tag);
+    return AudioSource.uri(Uri.parse(s.uri), tag: tag);
+  }
 
-  Future<void> playQueue(List<Song> songs, int index, {String? from}) async {
+  Future<void> playQueue(List<Song> songs, int index, {String? from, Duration startAt = Duration.zero}) async {
     if (songs.isEmpty) return;
     _queue = List.unmodifiable(songs);
     if (from != null) source.value = from;
@@ -52,7 +56,7 @@ class PlayerService {
     await player.setAudioSource(
       ConcatenatingAudioSource(children: songs.map(_toSource).toList()),
       initialIndex: index,
-      initialPosition: Duration.zero,
+      initialPosition: startAt,
     );
     // Gak di-await: future play() baru selesai pas lagu berhenti.
     player.play();

@@ -36,11 +36,30 @@ flutter run
 
 Folder `android/` sengaja gak di-commit; dibuat ulang lewat dua perintah di atas.
 
+## Mode demo (buat screenshot promosi)
+
+```bash
+flutter run --dart-define=DEMO=true
+flutter run --dart-define=DEMO=true --dart-define=DEMO_THEME=light
+```
+
+- Gak baca file musik di HP; pakai 20 lagu **rekaan** (judul & artis fiktif) dengan cover gradien yang digambar di kode.
+- Satu lagu langsung diputar (audio senyap) dengan progres sekitar setengah; antrean, album, artis, favorit, dan pintasan Cari semuanya terisi.
+- Tema terang bisa dinyalain dari ⚙ Pengaturan (cuma di mode demo).
+- Tanpa flag `DEMO`, app jalan normal.
+
+## Pulau di notch versi Aksesibilitas (opsional)
+
+APK sideload yang punya layanan Aksesibilitas diblok Google Play Protect, jadi default-nya mati.
+Buat build pribadi: `dart tool/patch_android.dart --a11y` lalu `flutter run --dart-define=A11Y=true`.
+
 ## Struktur
 
 - `lib/services/` baca lagu (channel `nova/media`), player, statistik & favorit
 - `lib/screens/` Putar, Rak, Cari, Sedang diputar, daftar lagu
 - `lib/widgets/` dek kaca, baris lagu, cover, tombol
+- `lib/demo/` mode demo: data rekaan, cover gradien, audio senyap
+- `test/` test data demo, audio senyap, palet
 - `tool/MainActivity.kt.template` kode Android buat baca MediaStore + cover
 - `tool/patch_android.dart` izin, service background, MainActivity
 

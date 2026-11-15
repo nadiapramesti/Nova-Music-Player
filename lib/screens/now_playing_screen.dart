@@ -311,7 +311,7 @@ class _Panel extends StatelessWidget {
               final next = audio.upNext;
               return Container(
                 padding: const EdgeInsets.only(top: 10),
-                decoration: const BoxDecoration(border: Border(top: BorderSide(color: Nv.rule))),
+                decoration: BoxDecoration(border: Border(top: BorderSide(color: Nv.rule))),
                 child: Row(
                   children: [
                     Text('BERIKUTNYA', style: mono(10.5, spacing: 1)),
@@ -487,7 +487,7 @@ void _showQueue(BuildContext context) {
                             ],
                           ),
                         ),
-                        if (on) const Icon(Icons.graphic_eq_rounded, color: Nv.accent, size: 20),
+                        if (on) Icon(Icons.graphic_eq_rounded, color: Nv.accent, size: 20),
                       ],
                     ),
                   ),

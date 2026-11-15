@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
+import 'demo/demo.dart';
 import 'screens/shell.dart';
 import 'screens/splash_screen.dart';
 import 'services/services.dart';
@@ -20,12 +21,9 @@ Future<void> main() async {
   await island.init(audio);
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-  SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor: Colors.transparent,
-    statusBarIconBrightness: Brightness.light,
-    systemNavigationBarColor: Colors.transparent,
-    systemNavigationBarIconBrightness: Brightness.light,
-  ));
+  // Produksi selalu gelap. Mode demo bisa mulai terang: --dart-define=DEMO_THEME=light
+  if (kDemo && kDemoTheme == 'light') Nv.p = Palette.light;
+  applySystemBars();
 
   runApp(const NovaApp());
 }
@@ -35,11 +33,14 @@ class NovaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Nova',
-      debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
-      home: const SplashGate(child: Shell()),
+    return ValueListenableBuilder<int>(
+      valueListenable: paletteVersion,
+      builder: (context, _, __) => MaterialApp(
+        title: 'Nova',
+        debugShowCheckedModeBanner: false,
+        theme: buildTheme(),
+        home: const SplashGate(child: Shell()),
+      ),
     );
   }
 }

@@ -1,27 +1,142 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-/// Palet Nova: netral gelap + satu aksen "cahaya bintang".
+/// Satu set warna Nova. Produksi selalu pakai [Palette.dark];
+/// [Palette.light] cuma buat perbandingan di mode demo.
+class Palette {
+  const Palette({
+    required this.brightness,
+    required this.bg,
+    required this.text,
+    required this.muted,
+    required this.accent,
+    required this.onAccent,
+    required this.accentSoft,
+    required this.line,
+    required this.rule,
+    required this.track,
+    required this.chip,
+    required this.glass,
+    required this.glassStrong,
+    required this.glassLine,
+    required this.cover,
+    required this.coverAlt,
+    required this.coverBig,
+    required this.glow,
+    required this.glowSoft,
+    required this.scrim,
+  });
+
+  final Brightness brightness;
+  final Color bg, text, muted, accent, onAccent, accentSoft, line, rule, track, chip;
+  final Color glass, glassStrong, glassLine, cover, coverAlt, coverBig, glow, glowSoft, scrim;
+
+  /// Gelap + kaca, satu aksen "cahaya bintang".
+  static const dark = Palette(
+    brightness: Brightness.dark,
+    bg: Color(0xFF0A0B0F),
+    text: Color(0xFFECEEF5),
+    muted: Color(0xFF8F95A8),
+    accent: Color(0xFFAEB9FF),
+    onAccent: Color(0xFF0C1030),
+    accentSoft: Color(0x24AEB9FF),
+    line: Color(0x2EECEEF5),
+    rule: Color(0x12ECEEF5),
+    track: Color(0x24ECEEF5),
+    chip: Color(0x14ECEEF5),
+    glass: Color(0x10FFFFFF),
+    glassStrong: Color(0x8C14161E),
+    glassLine: Color(0x21FFFFFF),
+    cover: Color(0x14FFFFFF),
+    coverAlt: Color(0x0BFFFFFF),
+    coverBig: Color(0xFF141622),
+    glow: Color(0x42AEB9FF),
+    glowSoft: Color(0x1FAEB9FF),
+    scrim: Color(0x66000000),
+  );
+
+  /// Terang: kertas dingin, kaca susu, aksen biru tua biar kontras.
+  static const light = Palette(
+    brightness: Brightness.light,
+    bg: Color(0xFFEEF0F6),
+    text: Color(0xFF12131A),
+    muted: Color(0xFF575D72),
+    accent: Color(0xFF3346D3),
+    onAccent: Color(0xFFFFFFFF),
+    accentSoft: Color(0x1F3346D3),
+    line: Color(0x3312131A),
+    rule: Color(0x1412131A),
+    track: Color(0x2412131A),
+    chip: Color(0x0F12131A),
+    glass: Color(0x8CFFFFFF),
+    glassStrong: Color(0xB8F8F9FC),
+    glassLine: Color(0xD9FFFFFF),
+    cover: Color(0x1412131A),
+    coverAlt: Color(0x0A12131A),
+    coverBig: Color(0xFFDDE1EF),
+    glow: Color(0x473346D3),
+    glowSoft: Color(0x1F3346D3),
+    scrim: Color(0x2912131A),
+  );
+}
+
+/// Palet aktif. Ganti lewat [setPalette] (mode demo saja).
 class Nv {
-  static const bg = Color(0xFF0A0B0F);
-  static const text = Color(0xFFECEEF5);
-  static const muted = Color(0xFF8F95A8);
-  static const accent = Color(0xFFAEB9FF);
-  static const onAccent = Color(0xFF0C1030);
-  static const accentSoft = Color(0x24AEB9FF);
-  static const line = Color(0x2EECEEF5);
-  static const rule = Color(0x12ECEEF5);
-  static const track = Color(0x24ECEEF5);
-  static const chip = Color(0x14ECEEF5);
-  static const glass = Color(0x10FFFFFF);
-  static const glassStrong = Color(0x8C14161E);
-  static const glassLine = Color(0x21FFFFFF);
-  static const cover = Color(0x14FFFFFF);
-  static const coverAlt = Color(0x0BFFFFFF);
-  static const coverBig = Color(0xFF141622);
-  static const glow = Color(0x42AEB9FF);
-  static const glowSoft = Color(0x1FAEB9FF);
+  static Palette p = Palette.dark;
+
+  static Color get bg => p.bg;
+  static Color get text => p.text;
+  static Color get muted => p.muted;
+  static Color get accent => p.accent;
+  static Color get onAccent => p.onAccent;
+  static Color get accentSoft => p.accentSoft;
+  static Color get line => p.line;
+  static Color get rule => p.rule;
+  static Color get track => p.track;
+  static Color get chip => p.chip;
+  static Color get glass => p.glass;
+  static Color get glassStrong => p.glassStrong;
+  static Color get glassLine => p.glassLine;
+  static Color get cover => p.cover;
+  static Color get coverAlt => p.coverAlt;
+  static Color get coverBig => p.coverBig;
+  static Color get glow => p.glow;
+  static Color get glowSoft => p.glowSoft;
+  static Color get scrim => p.scrim;
+  static bool get isLight => p.brightness == Brightness.light;
+}
+
+/// Dinaikkan tiap palet berganti; root app dengerin ini lalu bangun ulang semua layar.
+final paletteVersion = ValueNotifier<int>(0);
+
+void setPalette(Palette palette) {
+  if (identical(Nv.p, palette)) return;
+  Nv.p = palette;
+  applySystemBars();
+  paletteVersion.value++;
+  // Warna dibaca langsung dari Nv di tiap build, jadi semua layar (termasuk widget const
+  // dan layar yang lagi kebuka) ditandai buat dibangun ulang.
+  WidgetsBinding.instance.rootElement?.visitChildren(_rebuildAll);
+}
+
+void _rebuildAll(Element el) {
+  el.markNeedsBuild();
+  el.visitChildren(_rebuildAll);
+}
+
+/// Ikon status bar & navigasi ikut terang/gelap palet.
+void applySystemBars() {
+  final dark = Nv.p.brightness == Brightness.dark;
+  final icons = dark ? Brightness.light : Brightness.dark;
+  SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarIconBrightness: icons,
+    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+    systemNavigationBarColor: Colors.transparent,
+    systemNavigationBarIconBrightness: icons,
+  ));
 }
 
 FontWeight _fw(double w) => FontWeight.values[((w / 100).round() - 1).clamp(0, 8)];
@@ -30,7 +145,7 @@ FontWeight _fw(double w) => FontWeight.values[((w / 100).round() - 1).clamp(0, 8
 TextStyle disp(
   double size, {
   double w = 800,
-  Color color = Nv.text,
+  Color? color,
   double? height,
   double spacing = 0,
 }) {
@@ -39,19 +154,19 @@ TextStyle disp(
     fontSize: size,
     fontWeight: _fw(w),
     fontVariations: [FontVariation('wght', w)],
-    color: color,
+    color: color ?? Nv.text,
     height: height,
     letterSpacing: spacing,
   );
 }
 
 /// IBM Plex Mono buat angka, durasi, label kecil.
-TextStyle mono(double size, {double w = 600, Color color = Nv.muted, double spacing = 0}) {
+TextStyle mono(double size, {double w = 600, Color? color, double spacing = 0}) {
   return TextStyle(
     fontFamily: 'PlexMono',
     fontSize: size,
     fontWeight: w >= 600 ? FontWeight.w600 : FontWeight.w500,
-    color: color,
+    color: color ?? Nv.muted,
     letterSpacing: spacing,
   );
 }
@@ -59,18 +174,21 @@ TextStyle mono(double size, {double w = 600, Color color = Nv.muted, double spac
 ThemeData buildTheme() {
   return ThemeData(
     useMaterial3: true,
-    brightness: Brightness.dark,
+    brightness: Nv.p.brightness,
     scaffoldBackgroundColor: Nv.bg,
     fontFamily: 'Bricolage',
-    colorScheme: const ColorScheme.dark(
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: Nv.accent,
+      brightness: Nv.p.brightness,
+    ).copyWith(
       primary: Nv.accent,
       onPrimary: Nv.onAccent,
       surface: Nv.bg,
       onSurface: Nv.text,
     ),
     splashFactory: InkRipple.splashFactory,
-    progressIndicatorTheme: const ProgressIndicatorThemeData(color: Nv.accent),
-    textSelectionTheme: const TextSelectionThemeData(
+    progressIndicatorTheme: ProgressIndicatorThemeData(color: Nv.accent),
+    textSelectionTheme: TextSelectionThemeData(
       cursorColor: Nv.accent,
       selectionColor: Nv.accentSoft,
       selectionHandleColor: Nv.accent,
@@ -130,17 +248,18 @@ class Glow extends StatelessWidget {
     this.left,
     this.right,
     this.size = 360,
-    this.color = Nv.glow,
+    this.color,
   });
 
   final double? top;
   final double? left;
   final double? right;
   final double size;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
+    final c = color ?? Nv.glow;
     return Positioned(
       top: top,
       left: left,
@@ -152,7 +271,7 @@ class Glow extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             gradient: RadialGradient(
-              colors: [color, color.withAlpha(0)],
+              colors: [c, c.withAlpha(0)],
               stops: const [0, 0.7],
             ),
           ),

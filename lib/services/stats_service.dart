@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../demo/demo.dart';
+import '../demo/demo_data.dart';
 import '../models.dart';
 
 /// Favorit, jumlah putar, terakhir diputar, riwayat pencarian. Semua disimpan lokal.
@@ -16,6 +18,10 @@ class StatsService extends ChangeNotifier {
   int? lastSongId;
 
   Future<void> init() async {
+    if (kDemo) {
+      _seedDemo();
+      return;
+    }
     final p = await SharedPreferences.getInstance();
     _p = p;
     favorites.addAll((p.getStringList('fav') ?? const []).map(int.tryParse).whereType<int>());
@@ -36,6 +42,27 @@ class StatsService extends ChangeNotifier {
   }
 
   String _writeMap(Map<int, int> m) => jsonEncode(m.map((k, v) => MapEntry('$k', v)));
+
+  /// Mode demo: favorit, jumlah putar, dan riwayat contoh. [_p] tetap null,
+  /// jadi gak ada yang ditulis ke penyimpanan HP.
+  void _seedDemo() {
+    final songs = demoSongs();
+    final now = DateTime.now().millisecondsSinceEpoch;
+    const day = 86400000;
+    for (var i = 0; i < songs.length; i++) {
+      final id = songs[i].id;
+      if (i % 3 == 0) favorites.add(id);
+      if (i < 12) {
+        counts[id] = 40 - i * 3;
+        lastPlayed[id] = now - i * day;
+      } else {
+        counts[id] = 1;
+        lastPlayed[id] = now - (100 + i) * day;
+      }
+    }
+    recent = ['Kirana Dusk', 'orbit', 'Teh Jam Dua Pagi'];
+    lastSongId = songs[2].id;
+  }
 
   bool isFav(int id) => favorites.contains(id);
 

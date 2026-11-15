@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../demo/demo.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import 'controls.dart';
@@ -22,6 +23,17 @@ void showSettingsSheet(BuildContext context) {
             children: [
               Text('PENGATURAN', style: mono(11, spacing: 1.2)),
               const SizedBox(height: 4),
+              if (kDemo) ...[
+                Text('Tampilan (mode demo)', style: disp(24, spacing: -0.6)),
+                const SizedBox(height: 14),
+                _Toggle(
+                  title: 'Tema terang',
+                  body: 'Buat perbandingan screenshot. Cuma ada di mode demo; versi biasa selalu gelap.',
+                  value: Nv.isLight,
+                  onChanged: (v) => setPalette(v ? Palette.light : Palette.dark),
+                ),
+                const SizedBox(height: 22),
+              ],
               Text('Pulau di notch', style: disp(24, spacing: -0.6)),
               const SizedBox(height: 14),
               _Toggle(
@@ -38,6 +50,7 @@ void showSettingsSheet(BuildContext context) {
                 value: island.outside,
                 onChanged: island.setOutside,
               ),
+              if (kA11y) ...[
               const SizedBox(height: 10),
               _Toggle(
                 title: 'Mode presisi di notch (Aksesibilitas)',
@@ -48,6 +61,7 @@ void showSettingsSheet(BuildContext context) {
                 value: island.precise,
                 onChanged: (_) => island.openAccessibility(),
               ),
+              ],
               const SizedBox(height: 12),
               const _OutsideTester(),
             ],
@@ -191,9 +205,9 @@ class _OutsideTesterState extends State<_OutsideTester> with WidgetsBindingObser
         ],
         const SizedBox(height: 8),
         Text(
-          'Kalau saklar Aksesibilitas Nova abu-abu (gak bisa dinyalain): buka Pengaturan › '
-          'Aplikasi › Nova › titik tiga di pojok › "Izinkan setelan terbatas", lalu coba lagi. '
-          'Di Oppo/Realme, matikan juga optimasi baterai buat Nova.',
+          'HP Oppo / Realme / OnePlus: buka Pengaturan › Aplikasi › Nova, aktifkan '
+          '"Tampilkan di atas aplikasi lain" / "Jendela mengambang", lalu matikan '
+          'optimasi baterai buat Nova.',
           style: disp(12, w: 500, color: Nv.muted, height: 1.4),
         ),
       ],

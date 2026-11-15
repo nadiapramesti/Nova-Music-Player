@@ -23,13 +23,13 @@ class SongRow extends StatelessWidget {
           onTap: onTap,
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: Nv.rule))),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: Nv.rule))),
             child: Row(
               children: [
                 SizedBox(
                   width: 24,
                   child: on
-                      ? const Icon(Icons.play_arrow_rounded, size: 16, color: Nv.accent)
+                      ? Icon(Icons.play_arrow_rounded, size: 16, color: Nv.accent)
                       : Text(twoDigits(number), style: mono(12)),
                 ),
                 Art(songId: song.id, size: 40, radius: 9),

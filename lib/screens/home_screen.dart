@@ -95,7 +95,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Stack(
       children: [
         const Glow(top: -120, right: -140, size: 380),
-        const Glow(top: 430, left: -160, size: 360, color: Nv.glowSoft),
+        Glow(top: 430, left: -160, size: 360, color: Nv.glowSoft),
         RefreshIndicator(
           onRefresh: () => library.load(ask: false),
           color: Nv.accent,
@@ -192,7 +192,7 @@ class _ScanButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.refresh_rounded, size: 17, color: Nv.text),
+                Icon(Icons.refresh_rounded, size: 17, color: Nv.text),
                 const SizedBox(width: 6),
                 Text('Pindai ulang', style: disp(13, w: 700)),
               ],

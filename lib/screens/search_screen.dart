@@ -79,12 +79,12 @@ class _SearchScreenState extends State<SearchScreen> {
                       decoration: InputDecoration(
                         hintText: 'Contoh: Hujan Bulan Juni',
                         hintStyle: disp(15, w: 500, color: Nv.muted),
-                        prefixIcon: const Icon(Icons.search_rounded, color: Nv.text),
+                        prefixIcon: Icon(Icons.search_rounded, color: Nv.text),
                         suffixIcon: _q.isEmpty
                             ? null
                             : IconButton(
                                 tooltip: 'Hapus',
-                                icon: const Icon(Icons.close_rounded, color: Nv.text),
+                                icon: Icon(Icons.close_rounded, color: Nv.text),
                                 onPressed: () => _set(''),
                               ),
                         border: InputBorder.none,
@@ -157,7 +157,7 @@ class _SearchScreenState extends State<SearchScreen> {
               for (final r in stats.recent)
                 Material(
                   color: Colors.transparent,
-                  shape: const StadiumBorder(side: BorderSide(color: Nv.line, width: 1.5)),
+                  shape: StadiumBorder(side: BorderSide(color: Nv.line, width: 1.5)),
                   child: InkWell(
                     customBorder: const StadiumBorder(),
                     onTap: () => _set(r),
