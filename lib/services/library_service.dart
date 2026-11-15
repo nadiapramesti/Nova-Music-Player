@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../demo/demo.dart';
 import '../demo/demo_data.dart';
@@ -15,7 +16,29 @@ class LibraryService extends ChangeNotifier {
 
   LibraryStatus status = LibraryStatus.loading;
   String? errorMessage;
+  /// Lagu yang tampil (tanpa folder tersembunyi).
   List<Song> songs = const [];
+
+  /// Semua lagu hasil pindai, termasuk yang foldernya disembunyikan.
+  List<Song> allSongs = const [];
+
+  /// Path folder yang disembunyikan.
+  Set<String> hiddenFolders = {};
+  SharedPreferences? _p;
+
+  void _applyHidden() => songs = withoutHiddenFolders(allSongs, hiddenFolders);
+
+  Future<void> toggleFolder(String path) async {
+    final next = Set.of(hiddenFolders);
+    if (!next.remove(path)) next.add(path);
+    hiddenFolders = next;
+    _applyHidden();
+    notifyListeners();
+    if (!kDemo) {
+      _p ??= await SharedPreferences.getInstance();
+      await _p!.setStringList('hiddenFolders', hiddenFolders.toList());
+    }
+  }
 
   Future<bool> _granted({required bool ask}) async {
     Future<PermissionStatus> check(Permission p) => ask ? p.request() : p.status;
@@ -30,7 +53,8 @@ class LibraryService extends ChangeNotifier {
     notifyListeners();
     if (kDemo) {
       // Mode demo: lagu rekaan, tanpa izin & tanpa baca file di HP.
-      songs = demoSongs();
+      allSongs = demoSongs();
+      _applyHidden();
       status = LibraryStatus.ready;
       notifyListeners();
       return;
@@ -41,12 +65,15 @@ class LibraryService extends ChangeNotifier {
         notifyListeners();
         return;
       }
+      _p ??= await SharedPreferences.getInstance();
+      hiddenFolders = (_p!.getStringList('hiddenFolders') ?? const []).toSet();
       final raw = await _ch.invokeListMethod<Map<Object?, Object?>>('songs') ?? const [];
-      songs = raw
+      allSongs = raw
           .map((m) => Song.fromMap(m.map((k, v) => MapEntry(k.toString(), v))))
           // Buang suara < 30 detik (nada dering, voice note, dll).
           .where((s) => s.durationMs >= 30000)
           .toList();
+      _applyHidden();
       status = LibraryStatus.ready;
     } catch (e) {
       errorMessage = e.toString();

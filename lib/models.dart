@@ -25,6 +25,12 @@ class Song {
 
   Duration get duration => Duration(milliseconds: durationMs);
 
+  /// Path folder lengkap (buat bedain dua folder yang namanya sama).
+  String get folderPath {
+    final i = path.lastIndexOf('/');
+    return i > 0 ? path.substring(0, i) : '/';
+  }
+
   String get folder {
     final parts = path.split('/')..removeWhere((p) => p.isEmpty);
     return parts.length >= 2 ? parts[parts.length - 2] : 'Lainnya';
@@ -60,3 +66,24 @@ String fmt(Duration d) {
 }
 
 String twoDigits(int n) => n.toString().padLeft(2, '0');
+
+/// Buang lagu yang ada di folder tersembunyi (subfolder-nya ikut).
+List<Song> withoutHiddenFolders(List<Song> songs, Set<String> hidden) {
+  if (hidden.isEmpty) return songs;
+  bool isHidden(String folder) => hidden.any((h) => folder == h || folder.startsWith('$h/'));
+  return songs.where((s) => !isHidden(s.folderPath)).toList();
+}
+
+/// Ringkasan folder: path, nama, jumlah lagu (urut nama).
+List<(String path, String name, int count)> folderSummary(List<Song> songs) {
+  final counts = <String, int>{};
+  for (final s in songs) {
+    counts[s.folderPath] = (counts[s.folderPath] ?? 0) + 1;
+  }
+  final out = counts.entries.map((e) {
+    final name = e.key.split('/').where((p) => p.isNotEmpty).lastOrNull ?? '/';
+    return (e.key, name, e.value);
+  }).toList()
+    ..sort((a, b) => a.$2.toLowerCase().compareTo(b.$2.toLowerCase()));
+  return out;
+}

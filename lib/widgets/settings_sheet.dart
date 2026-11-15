@@ -4,6 +4,8 @@ import '../demo/demo.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import 'controls.dart';
+import 'song_actions.dart';
+import '../models.dart';
 
 void showSettingsSheet(BuildContext context) {
   showModalBottomSheet<void>(
@@ -16,7 +18,7 @@ void showSettingsSheet(BuildContext context) {
         radius: 28,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: SingleChildScrollView(child: ListenableBuilder(
-          listenable: island,
+          listenable: Listenable.merge([island, library]),
           builder: (context, _) => Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,6 +36,15 @@ void showSettingsSheet(BuildContext context) {
                 ),
                 const SizedBox(height: 22),
               ],
+              Text('Pustaka', style: disp(24, spacing: -0.6)),
+              const SizedBox(height: 14),
+              ActionTile(
+                icon: Icons.folder_off_outlined,
+                label: 'Folder yang disembunyikan',
+                trailing: library.hiddenFolders.isEmpty ? 'TIDAK ADA' : '${library.hiddenFolders.length} FOLDER',
+                onTap: () => showHiddenFoldersSheet(context),
+              ),
+              const SizedBox(height: 22),
               Text('Pulau di notch', style: disp(24, spacing: -0.6)),
               const SizedBox(height: 14),
               _Toggle(
@@ -219,6 +230,108 @@ class _OutsideTesterState extends State<_OutsideTester> with WidgetsBindingObser
           style: disp(12, w: 500, color: Nv.muted, height: 1.4),
         ),
       ],
+    );
+  }
+}
+
+/// Pilih folder yang lagunya gak mau ditampilin (rekaman WA, nada dering, dll).
+void showHiddenFoldersSheet(BuildContext context) {
+  showGlassSheet<void>(context, (sheet) {
+    return ListenableBuilder(
+      listenable: library,
+      builder: (sheet, _) {
+        final folders = folderSummary(library.allSongs);
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('PUSTAKA', style: mono(11, spacing: 1.2)),
+            const SizedBox(height: 4),
+            Text('Sembunyikan folder', style: disp(24, spacing: -0.6)),
+            const SizedBox(height: 6),
+            Text('Lagu di folder yang dicentang gak muncul di Nova. File-nya tetap aman di HP.',
+                style: disp(13, w: 500, color: Nv.muted, height: 1.35)),
+            const SizedBox(height: 14),
+            if (folders.isEmpty)
+              Text('Belum ada lagu yang kebaca.', style: disp(13.5, w: 500, color: Nv.muted))
+            else
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(sheet).size.height * 0.55),
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final (path, name, count) in folders)
+                      _FolderTile(
+                        name: name,
+                        path: path,
+                        count: count,
+                        hidden: library.hiddenFolders.contains(path),
+                        onTap: () => library.toggleFolder(path),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  });
+}
+
+class _FolderTile extends StatelessWidget {
+  const _FolderTile({
+    required this.name,
+    required this.path,
+    required this.count,
+    required this.hidden,
+    required this.onTap,
+  });
+
+  final String name;
+  final String path;
+  final int count;
+  final bool hidden;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = BorderRadius.circular(16);
+    final short = path.replaceFirst(RegExp(r'^/storage/emulated/0'), '');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: hidden ? Nv.accentSoft : Nv.chip,
+        borderRadius: r,
+        child: InkWell(
+          borderRadius: r,
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Row(
+              children: [
+                Icon(hidden ? Icons.visibility_off_rounded : Icons.folder_outlined,
+                    size: 21, color: hidden ? Nv.accent : Nv.text),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: disp(15, w: 700, color: hidden ? Nv.accent : Nv.text)),
+                      Text(short.isEmpty ? '/' : short,
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: mono(10.5, w: 500)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(hidden ? 'DISEMBUNYIKAN' : '$count LAGU', style: mono(10.5, color: hidden ? Nv.accent : null)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
