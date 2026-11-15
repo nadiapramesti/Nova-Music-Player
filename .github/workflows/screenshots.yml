@@ -41,6 +41,13 @@ jobs:
           dart tool/patch_android.dart
           flutter pub get
 
+      # Build dulu sebelum emulator nyala, lalu matiin Gradle biar RAM runner cukup.
+      - name: Build APK test (mode demo)
+        run: |
+          flutter build apk --debug --target=integration_test/screenshots_test.dart --dart-define=DEMO=true
+          (cd android && ./gradlew --stop) || true
+          free -h
+
       - name: Ambil screenshot di emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -48,12 +55,12 @@ jobs:
           target: google_apis
           arch: x86_64
           profile: pixel_6
-          cores: 4
-          ram-size: 3072M
+          cores: 2
+          ram-size: 2048M
           disk-size: 4096M
           disable-animations: false
           emulator-options: -no-metrics -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
-          script: flutter drive --driver=test_driver/integration_test.dart --target=integration_test/screenshots_test.dart --dart-define=DEMO=true
+          script: flutter drive --driver=test_driver/integration_test.dart --target=integration_test/screenshots_test.dart --use-application-binary=build/app/outputs/flutter-apk/app-debug.apk
 
       - name: Rilis screenshot
         uses: softprops/action-gh-release@v2
