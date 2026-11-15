@@ -65,17 +65,19 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
   Widget build(BuildContext context) {
     final mq = MediaQuery.of(context);
     final top = mq.padding.top;
-    // Area status bar gak nerima tap, jadi kapsul dipanjangin 18 ke bawah garis status bar.
-    final collapsedH = max(40.0, top - max(6.0, (top - 28) / 2) + 18);
+    // Status bar nyerap tap, jadi pil di dalam app duduk tepat di bawah status bar
+    // (gak ketutup kamera, judul kebaca). Mode Aksesibilitas: pil native yang di notch.
+    const collapsedH = 30.0;
     const expandedH = 188.0;
-    // Pas di tengah area status bar / lubang kamera.
-    final y = max(6.0, (top - 28) / 2);
+    final y = top + 4;
 
     return ListenableBuilder(
       listenable: Listenable.merge([audio.current, island]),
       builder: (context, _) {
         final song = audio.current.value;
-        if (song == null || !island.inApp || _hiddenFor == song.id) return const SizedBox.shrink();
+        if (song == null || !island.inApp || island.nativeEverywhere || _hiddenFor == song.id) {
+          return const SizedBox.shrink();
+        }
         return Stack(
           children: [
             if (_open)
@@ -110,12 +112,12 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
                       onEnd: () {
                         if (mounted) setState(() => _showFull = _open);
                       },
-                      width: _open ? mq.size.width - 20 : 112,
+                      width: _open ? mq.size.width - 20 : 200,
                       height: _open ? expandedH : collapsedH,
                       clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
                         color: Colors.black,
-                        borderRadius: BorderRadius.circular(_open ? 36 : 20),
+                        borderRadius: BorderRadius.circular(_open ? 36 : 15),
                         border: Border.all(color: _open ? Nv.glassLine : const Color(0x14FFFFFF)),
                         boxShadow: _open
                             ? const [BoxShadow(color: Color(0x80000000), blurRadius: 40, offset: Offset(0, 16))]
@@ -152,18 +154,17 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
     }
     if (_showFull) return const SizedBox.shrink(); // lagi menyusut
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      padding: const EdgeInsets.fromLTRB(4, 0, 11, 0),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Tengah dikosongin buat lubang kamera.
           ClipOval(child: Art(songId: song.id, size: 22, radius: 0)),
-          const Spacer(),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 5),
-            child: _EqBars(controller: _eq, height: 12),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(song.title,
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(12, w: 700)),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
+          _EqBars(controller: _eq, height: 12),
         ],
       ),
     );

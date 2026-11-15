@@ -142,6 +142,50 @@ const _adaptive = '''<?xml version="1.0" encoding="utf-8"?>
 </adaptive-icon>
 ''';
 
+// ---- Layanan Aksesibilitas (opsional): pulau tipis di notch yang bisa di-tap ----
+const _a11yService = '''
+        <service
+            android:name=".NovaIslandService"
+            android:label="Nova · Pulau di notch"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/nova_accessibility"/>
+        </service>
+''';
+
+const _a11yXml = '''<?xml version="1.0" encoding="utf-8"?>
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:notificationTimeout="500"
+    android:canRetrieveWindowContent="false"
+    android:description="@string/nova_a11y_desc"/>
+''';
+
+const _strings = '''<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nova_a11y_desc">Dipakai Nova cuma buat nampilin pulau lagu di notch kamera (di atas status bar) supaya bisa di-tap. Nova gak membaca isi layar atau ketikan.</string>
+</resources>
+''';
+
+void patchAccessibility(String manifestPath) {
+  final f = File(manifestPath);
+  var m = f.readAsStringSync();
+  if (!m.contains('NovaIslandService')) {
+    m = m.replaceFirst('</application>', '$_a11yService    </application>');
+    f.writeAsStringSync(m);
+  }
+  const res = 'android/app/src/main/res';
+  _write('$res/xml/nova_accessibility.xml', _a11yXml);
+  _write('$res/values/nova_strings.xml', _strings);
+  stdout.writeln('+ layanan Aksesibilitas pulau di notch');
+}
+
 void patchIcon() {
   const res = 'android/app/src/main/res';
   _write('$res/drawable/ic_launcher_fg.xml', _iconFg);
@@ -202,6 +246,7 @@ void main() {
 
   patchSplash();
   patchIcon();
+  patchAccessibility(manifest.path);
 
   stdout.writeln('Beres. Lanjut: flutter pub get');
 }

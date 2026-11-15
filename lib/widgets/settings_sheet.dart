@@ -38,6 +38,16 @@ void showSettingsSheet(BuildContext context) {
                 value: island.outside,
                 onChanged: island.setOutside,
               ),
+              const SizedBox(height: 10),
+              _Toggle(
+                title: 'Mode presisi di notch (Aksesibilitas)',
+                body: island.precise
+                    ? 'Aktif. Pil tipis duduk pas di lubang kamera dan bisa di-tap, di dalam maupun di luar app.'
+                    : 'Biar pil tipis bisa nempel pas di kamera dan tetap bisa di-tap (kayak Auralys), '
+                        'aktifin "Nova · Pulau di notch" di Aksesibilitas. Nova gak baca isi layar.',
+                value: island.precise,
+                onChanged: (_) => island.openAccessibility(),
+              ),
               const SizedBox(height: 12),
               const _OutsideTester(),
             ],
@@ -181,9 +191,9 @@ class _OutsideTesterState extends State<_OutsideTester> with WidgetsBindingObser
         ],
         const SizedBox(height: 8),
         Text(
-          'HP Oppo / Realme / OnePlus: buka Pengaturan › Aplikasi › Nova, aktifkan '
-          '"Tampilkan di atas aplikasi lain" atau "Jendela mengambang", lalu matikan '
-          'optimasi baterai buat Nova.',
+          'Kalau saklar Aksesibilitas Nova abu-abu (gak bisa dinyalain): buka Pengaturan › '
+          'Aplikasi › Nova › titik tiga di pojok › "Izinkan setelan terbatas", lalu coba lagi. '
+          'Di Oppo/Realme, matikan juga optimasi baterai buat Nova.',
           style: disp(12, w: 500, color: Nv.muted, height: 1.4),
         ),
       ],

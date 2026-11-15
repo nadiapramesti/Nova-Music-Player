@@ -1,5 +1,6 @@
 package com.nadia.nova
 
+import android.accessibilityservice.AccessibilityService
 import android.annotation.SuppressLint
 import android.app.AppOpsManager
 import android.content.ContentUris
@@ -28,6 +29,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewOutlineProvider
+import android.view.accessibility.AccessibilityEvent
 import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.ImageView
@@ -118,6 +120,11 @@ class MainActivity : AudioServiceActivity() {
                     result.success(null)
                 }
                 "test" -> result.success(NovaOverlay.test())
+                "precise" -> result.success(NovaOverlay.precise)
+                "openAccessibility" -> {
+                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
         }
@@ -131,6 +138,32 @@ class MainActivity : AudioServiceActivity() {
     override fun onStop() {
         super.onStop()
         NovaOverlay.setAppVisible(false)
+    }
+}
+
+/**
+ * Layanan Aksesibilitas Nova: cuma dipakai buat nampilin pulau di notch di atas status bar
+ * (TYPE_ACCESSIBILITY_OVERLAY) supaya pil tipis di kamera bisa di-tap. Gak baca isi layar.
+ */
+class NovaIslandService : AccessibilityService() {
+    override fun onServiceConnected() {
+        super.onServiceConnected()
+        NovaOverlay.init(applicationContext)
+        NovaOverlay.setHost(this)
+    }
+
+    override fun onAccessibilityEvent(event: AccessibilityEvent?) {}
+
+    override fun onInterrupt() {}
+
+    override fun onUnbind(intent: Intent?): Boolean {
+        NovaOverlay.clearHost(this)
+        return super.onUnbind(intent)
+    }
+
+    override fun onDestroy() {
+        NovaOverlay.clearHost(this)
+        super.onDestroy()
     }
 }
 
@@ -235,6 +268,25 @@ object NovaOverlay {
 
     var enabled = false
 
+    /** Layanan Aksesibilitas yang aktif (null = pakai jendela overlay biasa). */
+    private var host: AccessibilityService? = null
+    private var attachedWm: WindowManager? = null
+
+    val precise: Boolean get() = host != null
+
+    fun setHost(service: AccessibilityService) {
+        detach()
+        host = service
+        refresh()
+    }
+
+    fun clearHost(service: AccessibilityService) {
+        if (host !== service) return
+        detach()
+        host = null
+        refresh()
+    }
+
     private var ctx: Context? = null
     private val main = Handler(Looper.getMainLooper())
     private var appVisible = true
@@ -266,7 +318,7 @@ object NovaOverlay {
      * dari Settings.canDrawOverlays walau saklarnya udah nyala.
      */
     fun canDraw(c: Context): Boolean {
-        if (Build.VERSION.SDK_INT < 23 || probedOk) return true
+        if (host != null || Build.VERSION.SDK_INT < 23 || probedOk) return true
         if (Settings.canDrawOverlays(c)) return true
         try {
             val ops = c.getSystemService(Context.APP_OPS_SERVICE) as AppOpsManager
@@ -342,7 +394,7 @@ object NovaOverlay {
     fun refresh(): String? {
         val c = ctx ?: return null
         val testing = System.currentTimeMillis() < testUntil
-        val show = (enabled || testing) && (!appVisible || testing) && songId >= 0 && canDraw(c)
+        val show = (enabled || testing) && (!appVisible || testing || host != null) && songId >= 0 && canDraw(c)
         return if (show) attach(c) else {
             detach()
             null
@@ -413,10 +465,10 @@ object NovaOverlay {
         }
 
         @Suppress("DEPRECATION")
-        val type = if (Build.VERSION.SDK_INT >= 26) {
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-        } else {
-            WindowManager.LayoutParams.TYPE_PHONE
+        val type = when {
+            host != null -> WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY
+            Build.VERSION.SDK_INT >= 26 -> WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+            else -> WindowManager.LayoutParams.TYPE_PHONE
         }
         val p = WindowManager.LayoutParams(
             dp(210f),
@@ -436,7 +488,9 @@ object NovaOverlay {
         }
 
         try {
-            wm(c).addView(frame, p)
+            val windowManager = wm(host ?: c)
+            windowManager.addView(frame, p)
+            attachedWm = windowManager
         } catch (e: Exception) {
             return "Gagal tampil: ${e.javaClass.simpleName} ${e.message ?: ""}".trim()
         }
@@ -450,8 +504,10 @@ object NovaOverlay {
         val view = root ?: return
         root = null
         params = null
+        val windowManager = attachedWm
+        attachedWm = null
         try {
-            ctx?.let { wm(it).removeView(view) }
+            (windowManager ?: ctx?.let { wm(it) })?.removeView(view)
         } catch (e: Exception) {
             // abaikan
         }
@@ -477,15 +533,19 @@ object NovaOverlay {
         val screenW = c.resources.displayMetrics.widthPixels
 
         val child: View = when (mode) {
-            // Kapsul kecil ngelilingin lubang kamera: cover di kiri, equalizer di kanan,
-            // tengahnya kosong biar gak ketutup kamera.
-            // Sentuhan di area status bar diambil sistem, jadi kapsulnya dipanjangin
-            // ~18dp ke bawah garis status bar: bagian itu yang bisa di-tap.
+            // Mode Aksesibilitas: pil tipis pas di lubang kamera (cover kiri, equalizer kanan,
+            // tengah kosong buat kamera). Tanpa Aksesibilitas, status bar nyerap tap, jadi
+            // pilnya turun tepat di bawah status bar dan boleh nampilin judul.
             Mode.HIDDEN, Mode.PILL -> {
-                p.width = dp(112f)
-                p.y = maxOf(dp(4f), (statusH - dp(28f)) / 2)
-                p.height = maxOf(dp(40f), statusH - p.y + dp(18f))
-                hiddenView(c)
+                p.height = dp(30f)
+                if (host != null) {
+                    p.width = dp(150f)
+                    p.y = maxOf(0, (statusH - dp(30f)) / 2)
+                } else {
+                    p.width = dp(200f)
+                    p.y = statusH + dp(4f)
+                }
+                hiddenView(c, showTitle = host == null)
             }
             // Kartu pemutar ngambang di bawah status bar.
             Mode.EXPANDED -> {
@@ -504,7 +564,7 @@ object NovaOverlay {
             ),
         )
         try {
-            wm(c).updateViewLayout(frame, p)
+            (attachedWm ?: wm(c)).updateViewLayout(frame, p)
         } catch (e: Exception) {
             // abaikan
         }
@@ -552,15 +612,33 @@ object NovaOverlay {
             layoutParams = LinearLayout.LayoutParams(dp(size), dp(size))
         }
 
-    private fun hiddenView(c: Context): View = LinearLayout(c).apply {
+    private fun hiddenView(c: Context, showTitle: Boolean): View = LinearLayout(c).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(6f), dp(6f), dp(12f), dp(6f))
-        gravity = Gravity.BOTTOM
-        background = panelBg(20f)
+        setPadding(dp(4f), 0, dp(11f), 0)
+        background = panelBg(15f)
         contentDescription = "Nova: $title. Tap buat kontrol lagu"
         addView(coverView(c, 22f, true))
-        addView(View(c), LinearLayout.LayoutParams(0, 1, 1f))
+        if (showTitle) {
+            addView(
+                TextView(c).apply {
+                    text = title
+                    setTextColor(this@NovaOverlay.text)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                    paint.isFakeBoldText = true
+                    isSingleLine = true
+                    ellipsize = TextUtils.TruncateAt.MARQUEE
+                    marqueeRepeatLimit = -1
+                    isSelected = true
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginStart = dp(8f)
+                    marginEnd = dp(8f)
+                },
+            )
+        } else {
+            addView(View(c), LinearLayout.LayoutParams(0, 1, 1f))
+        }
         val barColor = if (playing) accent else muted
         for ((i, h) in listOf(7f, 12f, 9f).withIndex()) {
             addView(
@@ -570,10 +648,7 @@ object NovaOverlay {
                         cornerRadius = dp(1.5f).toFloat()
                     }
                 },
-                LinearLayout.LayoutParams(dp(3f), dp(h)).apply {
-                    if (i > 0) marginStart = dp(2f)
-                    bottomMargin = dp(5f)
-                },
+                LinearLayout.LayoutParams(dp(3f), dp(h)).apply { if (i > 0) marginStart = dp(2f) },
             )
         }
     }

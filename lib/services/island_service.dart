@@ -15,6 +15,12 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
   SharedPreferences? _p;
   bool inApp = true;
   bool outside = false;
+
+  /// Layanan Aksesibilitas Nova aktif: pulau native tipis tampil di notch, di dalam
+  /// maupun di luar app (pulau Flutter disembunyikan).
+  bool precise = false;
+
+  bool get nativeEverywhere => precise && outside;
   bool _waitingPermission = false;
 
   Future<void> init(PlayerService audio) async {
@@ -25,6 +31,7 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     if (outside && !await canDraw()) outside = false;
     await _send('setEnabled', outside);
 
+    precise = await _isPrecise();
     WidgetsBinding.instance.addObserver(this);
     void push() => _send('update', {
           'id': audio.current.value?.id ?? -1,
@@ -35,6 +42,16 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     audio.current.addListener(push);
     audio.player.playingStream.listen((_) => push());
   }
+
+  Future<bool> _isPrecise() async {
+    try {
+      return await _ch.invokeMethod<bool>('precise') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> openAccessibility() => _send('openAccessibility', null);
 
   Future<bool> canDraw() async {
     try {
@@ -86,6 +103,14 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _isPrecise().then((p) {
+        if (p != precise) {
+          precise = p;
+          notifyListeners();
+        }
+      });
+    }
     if (state == AppLifecycleState.resumed && _waitingPermission) {
       _waitingPermission = false;
       canDraw().then((ok) {
