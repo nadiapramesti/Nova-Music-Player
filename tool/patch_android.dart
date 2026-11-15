@@ -11,6 +11,8 @@ const _perms = [
   '<uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>',
   '<uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>',
   '<uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>',
+  // Opsional, diminta lewat tombol: baca file .lrc di samping lagu (Android 11+).
+  '<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>',
 ];
 
 const _service = '''

@@ -1,5 +1,6 @@
 import 'island_service.dart';
 import 'library_service.dart';
+import 'lyrics.dart';
 import 'player_service.dart';
 import 'playlist_service.dart';
 import 'stats_service.dart';
@@ -17,3 +18,4 @@ final library = LibraryService();
 final audio = PlayerService(stats);
 final island = IslandService();
 final playlists = PlaylistService();
+final lyrics = LyricsService();

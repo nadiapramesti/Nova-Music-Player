@@ -10,6 +10,7 @@ import '../widgets/art.dart';
 import '../services/sleep_timer.dart';
 import '../widgets/controls.dart';
 import '../widgets/deck.dart' show novaArtHero;
+import '../widgets/lyrics_view.dart';
 import '../widgets/queue_sheet.dart';
 import '../widgets/sleep_sheet.dart';
 
@@ -23,6 +24,9 @@ void shuffleAndOpen(BuildContext context, List<Song> songs, {String? from}) {
   audio.shuffleQueue(songs, from: from);
   openNowPlaying(context);
 }
+
+/// Layar pemutar lagi nampilin lirik (diingat selama app jalan).
+final showLyrics = ValueNotifier<bool>(false);
 
 void openNowPlaying(BuildContext context) {
   Navigator.of(context).push(PageRouteBuilder<void>(
@@ -61,7 +65,18 @@ class NowPlayingScreen extends StatelessWidget {
                     children: [
                       _TopBar(song: song),
                       const SizedBox(height: 16),
-                      Expanded(child: Center(child: _Cover(song: song))),
+                      // Cover ⇄ lirik (tombol lirik di kiri atas).
+                      Expanded(
+                        child: ValueListenableBuilder<bool>(
+                          valueListenable: showLyrics,
+                          builder: (context, on, _) => AnimatedSwitcher(
+                            duration: const Duration(milliseconds: 300),
+                            child: on
+                                ? LyricsView(key: const ValueKey('lyrics'), song: song)
+                                : Center(key: const ValueKey('cover'), child: _Cover(song: song)),
+                          ),
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       _Panel(song: song),
                     ],
@@ -89,8 +104,26 @@ class _TopBar extends StatelessWidget {
           label: 'Tutup',
           onTap: () => Navigator.of(context).pop(),
         ),
-        // Penyeimbang tombol timer tidur di kanan, biar judul tetap di tengah.
-        const SizedBox(width: 52),
+        const SizedBox(width: 8),
+        ValueListenableBuilder<bool>(
+          valueListenable: showLyrics,
+          builder: (context, on, _) => on
+              ? RoundButton(
+                  icon: Icons.lyrics_rounded,
+                  label: 'Tutup lirik',
+                  size: 44,
+                  iconSize: 20,
+                  fill: Nv.accentSoft,
+                  fg: Nv.accent,
+                  border: Nv.accent,
+                  onTap: () => showLyrics.value = false,
+                )
+              : GlassCircleButton(
+                  icon: Icons.lyrics_outlined,
+                  label: 'Lirik',
+                  onTap: () => showLyrics.value = true,
+                ),
+        ),
         Expanded(
           child: StreamBuilder<int?>(
             stream: audio.player.currentIndexStream,

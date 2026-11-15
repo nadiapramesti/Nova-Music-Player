@@ -80,6 +80,21 @@ class MainActivity : AudioServiceActivity() {
                         }
                     }
                 }
+                "lyrics" -> {
+                    val id = call.argument<Number>("id")?.toLong()
+                    if (id == null) {
+                        result.success(null)
+                    } else {
+                        NovaMedia.io.execute {
+                            val text = try {
+                                NovaMedia.embeddedLyrics(applicationContext, id)
+                            } catch (e: Exception) {
+                                null
+                            }
+                            main.post { result.success(text) }
+                        }
+                    }
+                }
                 // Tombol back di layar utama: sembunyikan app, musik tetap jalan.
                 "moveToBack" -> {
                     moveTaskToBack(true)
@@ -258,6 +273,151 @@ object NovaMedia {
                 // abaikan
             }
         }
+    }
+
+    /**
+     * Lirik yang tertanam di file lagu:
+     * - MP3: frame ID3v2 USLT (v2.3 / v2.4)
+     * - FLAC: Vorbis comment LYRICS= / UNSYNCEDLYRICS=
+     * Teksnya bisa berupa LRC (bertimestamp) atau lirik biasa; diparse di Dart.
+     */
+    fun embeddedLyrics(ctx: Context, id: Long): String? {
+        val uri = ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id)
+        ctx.contentResolver.openInputStream(uri)?.use { input ->
+            val head = ByteArray(10)
+            if (readFully(input, head) < 10) return null
+            if (head[0] == 'I'.code.toByte() && head[1] == 'D'.code.toByte() && head[2] == '3'.code.toByte()) {
+                val major = head[3].toInt()
+                val size = syncsafe(head, 6)
+                if (size <= 0 || size > 32 * 1024 * 1024) return null
+                val tag = ByteArray(size)
+                val n = readFully(input, tag)
+                // Lewati extended header kalau ada (flag bit 6).
+                val hasExt = (head[5].toInt() and 0x40) != 0
+                val start = when {
+                    !hasExt || n < 4 -> 0
+                    major == 4 -> syncsafe(tag, 0)
+                    else -> 4 + int32(tag, 0)
+                }
+                return id3Uslt(tag, n, major, start.coerceIn(0, n))
+            }
+            val isFlac = head[0] == 'f'.code.toByte() && head[1] == 'L'.code.toByte() &&
+                head[2] == 'a'.code.toByte() && head[3] == 'C'.code.toByte()
+            if (!isFlac) return null
+        } ?: return null
+        return flacLyrics(ctx, uri)
+    }
+
+    private fun readFully(input: java.io.InputStream, buf: ByteArray, len: Int = buf.size): Int {
+        var off = 0
+        while (off < len) {
+            val r = input.read(buf, off, len - off)
+            if (r < 0) break
+            off += r
+        }
+        return off
+    }
+
+    private fun syncsafe(b: ByteArray, at: Int): Int =
+        ((b[at].toInt() and 0x7f) shl 21) or ((b[at + 1].toInt() and 0x7f) shl 14) or
+            ((b[at + 2].toInt() and 0x7f) shl 7) or (b[at + 3].toInt() and 0x7f)
+
+    private fun int32(b: ByteArray, at: Int): Int =
+        ((b[at].toInt() and 0xff) shl 24) or ((b[at + 1].toInt() and 0xff) shl 16) or
+            ((b[at + 2].toInt() and 0xff) shl 8) or (b[at + 3].toInt() and 0xff)
+
+    private fun id3Uslt(tag: ByteArray, len: Int, major: Int, from: Int): String? {
+        if (major != 3 && major != 4) return null
+        var pos = from
+        while (pos + 10 <= len) {
+            val frameId = String(tag, pos, 4, Charsets.ISO_8859_1)
+            if (frameId[0] == '\u0000') break
+            val size = if (major == 4) syncsafe(tag, pos + 4) else int32(tag, pos + 4)
+            val start = pos + 10
+            if (size <= 0 || start + size > len) break
+            if (frameId == "USLT" && size > 4) {
+                val enc = tag[start].toInt()
+                var p = start + 4 // encoding (1) + bahasa (3)
+                val end = start + size
+                // Lewati deskripsi (diakhiri 0 / 00 tergantung encoding).
+                val wide = enc == 1 || enc == 2
+                while (p < end) {
+                    if (wide) {
+                        if (p + 1 < end && tag[p].toInt() == 0 && tag[p + 1].toInt() == 0) { p += 2; break }
+                        p += 2
+                    } else {
+                        if (tag[p].toInt() == 0) { p += 1; break }
+                        p += 1
+                    }
+                }
+                if (p >= end) return null
+                val charset = when (enc) {
+                    1 -> Charsets.UTF_16
+                    2 -> Charsets.UTF_16BE
+                    3 -> Charsets.UTF_8
+                    else -> Charsets.ISO_8859_1
+                }
+                return String(tag, p, end - p, charset).trimEnd('\u0000').trim().ifEmpty { null }
+            }
+            pos = start + size
+        }
+        return null
+    }
+
+    /** FLAC: lewati "fLaC", baca blok metadata satu per satu sampai VORBIS_COMMENT (tipe 4). */
+    private fun flacLyrics(ctx: Context, uri: android.net.Uri): String? {
+        ctx.contentResolver.openInputStream(uri)?.use { input ->
+            val magic = ByteArray(4)
+            if (readFully(input, magic) < 4) return null
+            val header = ByteArray(4)
+            while (true) {
+                if (readFully(input, header) < 4) return null
+                val last = (header[0].toInt() and 0x80) != 0
+                val type = header[0].toInt() and 0x7f
+                val length = ((header[1].toInt() and 0xff) shl 16) or
+                    ((header[2].toInt() and 0xff) shl 8) or (header[3].toInt() and 0xff)
+                if (type == 4) {
+                    if (length > 16 * 1024 * 1024) return null
+                    val body = ByteArray(length)
+                    if (readFully(input, body) < length) return null
+                    return vorbisLyrics(body)
+                }
+                if (last) return null
+                var skip = length.toLong()
+                while (skip > 0) {
+                    val k = input.skip(skip)
+                    if (k <= 0) return null
+                    skip -= k
+                }
+            }
+        }
+        return null
+    }
+
+    private fun vorbisLyrics(b: ByteArray): String? {
+        fun le32(at: Int): Int =
+            (b[at].toInt() and 0xff) or ((b[at + 1].toInt() and 0xff) shl 8) or
+                ((b[at + 2].toInt() and 0xff) shl 16) or ((b[at + 3].toInt() and 0xff) shl 24)
+        if (b.size < 8) return null
+        var p = 0
+        val vendor = le32(p); p += 4 + vendor
+        if (p + 4 > b.size) return null
+        val count = le32(p); p += 4
+        var fallback: String? = null
+        repeat(count) {
+            if (p + 4 > b.size) return fallback
+            val len = le32(p); p += 4
+            if (len < 0 || p + len > b.size) return fallback
+            val kv = String(b, p, len, Charsets.UTF_8); p += len
+            val eq = kv.indexOf('=')
+            if (eq > 0) {
+                val key = kv.substring(0, eq).uppercase()
+                val value = kv.substring(eq + 1)
+                if (key == "LYRICS" && value.isNotBlank()) return value
+                if (key == "UNSYNCEDLYRICS" && value.isNotBlank()) fallback = value
+            }
+        }
+        return fallback
     }
 
     fun artworkBytes(ctx: Context, id: Long, size: Int): ByteArray? {
