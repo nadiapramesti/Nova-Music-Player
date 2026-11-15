@@ -18,7 +18,7 @@ void showSettingsSheet(BuildContext context) {
         radius: 28,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
         child: SingleChildScrollView(child: ListenableBuilder(
-          listenable: Listenable.merge([island, library, coverTint]),
+          listenable: Listenable.merge([island, library, coverTint, audio.fadeSeconds]),
           builder: (context, _) => Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,6 +43,17 @@ void showSettingsSheet(BuildContext context) {
                   onChanged: (v) => setPalette(v ? Palette.light : Palette.dark),
                 ),
               ],
+              const SizedBox(height: 22),
+              Text('Pemutaran', style: disp(24, spacing: -0.6)),
+              const SizedBox(height: 14),
+              _Choices(
+                title: 'Transisi halus',
+                body: 'Suara pelan turun di akhir lagu lalu pelan naik di lagu berikutnya, '
+                    'biar pindah lagu gak kaget.',
+                options: [for (final s in transitionChoices) s == 0 ? 'Mati' : '$s dtk'],
+                selected: transitionChoices.indexOf(audio.fadeSeconds.value),
+                onSelect: (i) => audio.setFadeSeconds(transitionChoices[i]),
+              ),
               const SizedBox(height: 22),
               Text('Pustaka', style: disp(24, spacing: -0.6)),
               const SizedBox(height: 14),
@@ -97,6 +108,76 @@ void showSettingsSheet(BuildContext context) {
       ),
     ),
   );
+}
+
+/// Kartu pengaturan dengan beberapa pilihan (tombol sejajar).
+class _Choices extends StatelessWidget {
+  const _Choices({
+    required this.title,
+    required this.body,
+    required this.options,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final String title;
+  final String body;
+  final List<String> options;
+  final int selected;
+  final ValueChanged<int> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+      decoration: BoxDecoration(color: Nv.chip, borderRadius: BorderRadius.circular(18)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: disp(15, w: 700)),
+          const SizedBox(height: 3),
+          Text(body, style: disp(12.5, w: 500, color: Nv.muted, height: 1.35)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (var i = 0; i < options.length; i++) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(child: _ChoiceButton(label: options[i], on: i == selected, onTap: () => onSelect(i))),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ChoiceButton extends StatelessWidget {
+  const _ChoiceButton({required this.label, required this.on, required this.onTap});
+  final String label;
+  final bool on;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: on ? Nv.accent : Nv.glass,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: on ? Nv.accent : Nv.line),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: SizedBox(
+          height: 40,
+          child: Center(
+            child: Text(label, style: disp(13.5, w: 700, color: on ? Nv.onAccent : Nv.text)),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Toggle extends StatelessWidget {

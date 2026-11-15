@@ -20,6 +20,7 @@ Future<void> main() async {
   await stats.init();
   await playlists.init();
   await island.init(audio, stats);
+  await audio.initPlayback();
   await coverTint.init();
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

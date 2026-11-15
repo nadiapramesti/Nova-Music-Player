@@ -1,14 +1,17 @@
+import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../demo/demo.dart';
 import '../demo/silent_source.dart';
 import '../models.dart';
 import 'nova_shuffle.dart';
 import 'sleep_timer.dart';
+import 'transition.dart';
 import 'stats_service.dart';
 
 class PlayerService {
@@ -16,6 +19,8 @@ class PlayerService {
     player.currentIndexStream.listen((i) {
       if (i == null || i < 0 || i >= _queue.length) return;
       _cur = i;
+      // Ganti lagu: langsung set volume awal lagu baru (gak nunggu ticker).
+      _tickFade();
       final s = _queue[i];
       current.value = s;
       if (_lastMarked != s.id) {
@@ -30,6 +35,46 @@ class PlayerService {
     player.processingStateStream.listen((s) {
       if (s == ProcessingState.completed) sleep.onTrackEnded();
     });
+    player.playingStream.listen((_) => _syncFadeTicker());
+  }
+
+  /// Durasi transisi halus antar lagu dalam detik (0 = mati).
+  final ValueNotifier<int> fadeSeconds = ValueNotifier<int>(2);
+  late final VolumeMixer _volume = VolumeMixer(player.setVolume);
+  Timer? _fadeTicker;
+
+  Future<void> initPlayback() async {
+    final p = await SharedPreferences.getInstance();
+    final v = p.getInt('fadeSeconds') ?? 2;
+    fadeSeconds.value = transitionChoices.contains(v) ? v : 2;
+    _syncFadeTicker();
+  }
+
+  Future<void> setFadeSeconds(int v) async {
+    fadeSeconds.value = v;
+    _syncFadeTicker();
+    (await SharedPreferences.getInstance()).setInt('fadeSeconds', v);
+  }
+
+  void _syncFadeTicker() {
+    final on = fadeSeconds.value > 0 && player.playing;
+    if (on && _fadeTicker == null) {
+      _tickFade();
+      _fadeTicker = Timer.periodic(const Duration(milliseconds: 100), (_) => _tickFade());
+    } else if (!on) {
+      _fadeTicker?.cancel();
+      _fadeTicker = null;
+      if (fadeSeconds.value == 0) _volume.setFade(1);
+    }
+  }
+
+  void _tickFade() {
+    if (fadeSeconds.value == 0) return _volume.setFade(1);
+    _volume.setFade(transitionGain(
+      pos: player.position,
+      dur: player.duration,
+      fade: Duration(seconds: fadeSeconds.value),
+    ));
   }
 
   final StatsService _stats;
@@ -38,7 +83,7 @@ class PlayerService {
   final ValueNotifier<Song?> current = ValueNotifier<Song?>(null);
 
   /// Timer tidur (berhenti otomatis).
-  late final SleepTimer sleep = SleepTimer(pause: player.pause, setVolume: player.setVolume);
+  late final SleepTimer sleep = SleepTimer(pause: player.pause, setVolume: _volume.setSleep);
 
   /// Asal antrean, misal "Daftar putar · Terbaru" atau nama album.
   final ValueNotifier<String> source = ValueNotifier<String>('Daftar putar');
