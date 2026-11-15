@@ -21,31 +21,55 @@ class Deck extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Dua panel kaca terpisah: pemutar mini melayang di atas, navigasi di bawah.
+    return ValueListenableBuilder<Song?>(
+      valueListenable: audio.current,
+      builder: (context, song, _) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 320),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SizeTransition(sizeFactor: anim, axisAlignment: 1, child: child),
+            ),
+            child: song == null
+                ? const SizedBox(width: double.infinity)
+                : Padding(
+                    key: const ValueKey('mini'),
+                    padding: const EdgeInsets.fromLTRB(6, 0, 6, 10),
+                    child: _Panel(
+                      radius: 24,
+                      padding: const EdgeInsets.fromLTRB(4, 4, 8, 4),
+                      child: _NowRow(song: song),
+                    ),
+                  ),
+          ),
+          _Panel(
+            radius: 26,
+            padding: const EdgeInsets.all(7),
+            child: _NavBar(tab: tab, onTab: onTab),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Panel extends StatelessWidget {
+  const _Panel({required this.child, required this.radius, required this.padding});
+  final Widget child;
+  final double radius;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 40, offset: Offset(0, 14))],
+        borderRadius: BorderRadius.circular(radius),
+        boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 32, offset: Offset(0, 12))],
       ),
-      child: Glass(
-        strong: true,
-        radius: 28,
-        padding: const EdgeInsets.all(8),
-        child: ValueListenableBuilder<Song?>(
-          valueListenable: audio.current,
-          builder: (context, song, _) => AnimatedSize(
-            duration: const Duration(milliseconds: 320),
-            curve: Curves.easeOutCubic,
-            alignment: Alignment.bottomCenter,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (song != null) ...[_NowRow(song: song), const SizedBox(height: 8)],
-                _NavBar(tab: tab, onTab: onTab),
-              ],
-            ),
-          ),
-        ),
-      ),
+      child: Glass(strong: true, radius: radius, padding: padding, child: child),
     );
   }
 }
@@ -62,7 +86,7 @@ class _NowRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         onTap: () => openNowPlaying(context),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
+          padding: const EdgeInsets.all(4),
           child: Row(
             children: [
               Hero(
