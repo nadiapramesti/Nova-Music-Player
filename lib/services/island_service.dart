@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../demo/demo.dart';
 import 'player_service.dart';
+import 'stats_service.dart';
 
 /// Pengaturan pulau di notch:
 /// - [inApp]: tampil di dalam Nova.
@@ -27,7 +28,7 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
   bool get nativeEverywhere => precise && outside;
   bool _waitingPermission = false;
 
-  Future<void> init(PlayerService audio) async {
+  Future<void> init(PlayerService audio, StatsService stats) async {
     if (kDemo) {
       inApp = false;
       outside = false;
@@ -52,6 +53,41 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
         });
     audio.current.addListener(push);
     audio.player.playingStream.listen((_) => push());
+
+    // Progres & favorit buat kartu di luar app (dikirim tiap ganti detik).
+    var lastSec = -1;
+    void pushProgress([Duration? p]) {
+      if (!outside) return;
+      final song = audio.current.value;
+      if (song == null) return;
+      final pos = p ?? audio.player.position;
+      _send('progress', {
+        'pos': pos.inMilliseconds,
+        'dur': (audio.player.duration ?? song.duration).inMilliseconds,
+        'fav': stats.isFav(song.id),
+      });
+    }
+
+    audio.player.positionStream.listen((p) {
+      if (p.inSeconds == lastSec) return;
+      lastSec = p.inSeconds;
+      pushProgress(p);
+    });
+    stats.addListener(pushProgress);
+
+    // Tombol di kartu luar app: loncat & favorit.
+    _ch.setMethodCallHandler((call) async {
+      switch (call.method) {
+        case 'seek':
+          final f = (call.arguments as num).toDouble();
+          final d = audio.player.duration ?? audio.current.value?.duration;
+          if (d != null) await audio.player.seek(d * f);
+        case 'toggleFav':
+          final id = audio.current.value?.id;
+          if (id != null) stats.toggleFav(id);
+      }
+      return null;
+    });
   }
 
   Future<bool> _isPrecise() async {

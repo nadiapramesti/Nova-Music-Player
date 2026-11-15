@@ -89,7 +89,9 @@ class MainActivity : AudioServiceActivity() {
             }
         }
 
-        MethodChannel(messenger, "nova/overlay").setMethodCallHandler { call, result ->
+        val overlayChannel = MethodChannel(messenger, "nova/overlay")
+        NovaOverlay.channel = overlayChannel
+        overlayChannel.setMethodCallHandler { call, result ->
             when (call.method) {
                 "canDraw" -> result.success(NovaOverlay.canDraw(this))
                 "requestPermission" -> {
@@ -125,6 +127,14 @@ class MainActivity : AudioServiceActivity() {
                     result.success(null)
                 }
                 "test" -> result.success(NovaOverlay.test())
+                "progress" -> {
+                    NovaOverlay.progress(
+                        pos = call.argument<Number>("pos")?.toLong() ?: 0L,
+                        dur = call.argument<Number>("dur")?.toLong() ?: 0L,
+                        isFav = call.argument<Boolean>("fav") ?: false,
+                    )
+                    result.success(null)
+                }
                 "precise" -> result.success(NovaOverlay.precise)
                 "openAccessibility" -> {
                     startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
@@ -272,6 +282,9 @@ object NovaOverlay {
     enum class Mode { HIDDEN, PILL, EXPANDED }
 
     var enabled = false
+
+    /** Channel balik ke Dart (seek / favorit dari kartu di luar app). */
+    var channel: MethodChannel? = null
 
     /** Layanan Aksesibilitas yang aktif (null = pakai jendela overlay biasa). */
     private var host: AccessibilityService? = null
@@ -616,7 +629,7 @@ object NovaOverlay {
             Mode.EXPANDED -> {
                 p.width = screenW - dp(20f)
                 // Tinggi pasti: latar blur pakai MATCH_PARENT, kalau WRAP_CONTENT kartunya jadi satu layar.
-                p.height = dp(160f)
+                p.height = dp(202f)
                 p.y = statusH + dp(8f)
                 expandedView(c)
             }
@@ -750,7 +763,61 @@ object NovaOverlay {
         )
     }
 
-    /** Kartu pemutar ngambang: latar cover di-blur (Android 12+), kontrol simetris. */
+    // ---- Progres & favorit dari Dart (dikirim tiap detik), diupdate di tempat ----
+    private var posMs = 0L
+    private var durMs = 0L
+    private var fav = false
+    private var waveBars: List<View> = emptyList()
+    private var posText: TextView? = null
+    private var durText: TextView? = null
+    private var favText: TextView? = null
+
+    fun progress(pos: Long, dur: Long, isFav: Boolean) {
+        posMs = pos
+        durMs = dur
+        fav = isFav
+        bindProgress()
+    }
+
+    private fun fmt(ms: Long): String {
+        val s = (ms / 1000).coerceAtLeast(0)
+        return String.format("%02d:%02d", s / 60, s % 60)
+    }
+
+    private fun bindProgress() {
+        val f = if (durMs > 0) (posMs.toFloat() / durMs).coerceIn(0f, 1f) else 0f
+        val n = waveBars.size
+        waveBars.forEachIndexed { i, v ->
+            (v.background as? GradientDrawable)?.setColor(
+                if ((i + 0.5f) / n <= f) accent else Color.argb(51, 255, 255, 255)
+            )
+        }
+        posText?.text = fmt(posMs)
+        durText?.text = fmt(durMs)
+        favText?.apply {
+            text = if (fav) "♥" else "♡"
+            setTextColor(if (fav) accent else Color.WHITE)
+        }
+    }
+
+    private fun circleText(c: Context, label: String, size: Float, desc: String, action: () -> Unit) =
+        TextView(c).apply {
+            text = label
+            gravity = Gravity.CENTER
+            setTextColor(Color.WHITE)
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, size * 0.42f)
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(Color.argb(31, 255, 255, 255))
+                setStroke(dp(1f), Color.argb(26, 255, 255, 255))
+            }
+            contentDescription = desc
+            setOnClickListener { action() }
+            layoutParams = LinearLayout.LayoutParams(dp(size), dp(size))
+        }
+
+    /** Kartu pemutar ngambang, disamain sama versi di dalam Nova. Tinggi dikunci di render(). */
+    @SuppressLint("ClickableViewAccessibility")
     private fun expandedView(c: Context): View = FrameLayout(c).apply {
         background = panelBg(30f)
         clipToOutline = true
@@ -759,47 +826,42 @@ object NovaOverlay {
                 outline.setRoundRect(0, 0, view.width, view.height, dp(30f).toFloat())
             }
         }
+        val full = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
 
-        // Latar warna lagu: cover dibesarin + blur, ditimpa gelap.
+        // Latar warna lagu: cover dibesarin + blur, ditimpa gradasi gelap.
         coverBmp?.let { bmp ->
-            addView(
-                ImageView(c).apply {
-                    setImageBitmap(bmp)
-                    scaleType = ImageView.ScaleType.CENTER_CROP
-                    scaleX = 1.5f
-                    scaleY = 1.5f
-                    if (Build.VERSION.SDK_INT >= 31) {
-                        setRenderEffect(
-                            android.graphics.RenderEffect.createBlurEffect(
-                                dp(28f).toFloat(), dp(28f).toFloat(), android.graphics.Shader.TileMode.CLAMP,
-                            )
+            addView(ImageView(c).apply {
+                setImageBitmap(bmp)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                scaleX = 1.4f
+                scaleY = 1.4f
+                if (Build.VERSION.SDK_INT >= 31) {
+                    setRenderEffect(
+                        android.graphics.RenderEffect.createBlurEffect(
+                            dp(30f).toFloat(), dp(30f).toFloat(), android.graphics.Shader.TileMode.CLAMP,
                         )
-                        alpha = 0.9f
-                    } else {
-                        alpha = 0.35f
-                    }
-                },
-                FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
-            )
+                    )
+                } else {
+                    alpha = 0.35f
+                }
+            }, full)
         }
-        addView(
-            View(c).apply {
-                background = GradientDrawable(
-                    GradientDrawable.Orientation.TOP_BOTTOM,
-                    intArrayOf(Color.argb(150, 0, 0, 0), Color.argb(230, 0, 0, 0)),
-                )
-            },
-            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
-        )
+        addView(View(c).apply {
+            background = GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                intArrayOf(Color.argb(153, 0, 0, 0), Color.argb(230, 0, 0, 0)),
+            )
+        }, full)
 
         addView(LinearLayout(c).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(14f), dp(12f), dp(14f), dp(12f))
+            setPadding(dp(14f), dp(14f), dp(14f), dp(14f))
 
+            // Baris atas: cover · status/judul/artis · equalizer
             addView(LinearLayout(c).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
+                setOnClickListener { mode = Mode.HIDDEN; openApp(c) }
                 addView(coverView(c, 54f, false).apply { elevation = dp(6f).toFloat() })
                 addView(
                     LinearLayout(c).apply {
@@ -824,7 +886,7 @@ object NovaOverlay {
                         })
                         addView(TextView(c).apply {
                             text = artist
-                            setTextColor(Color.argb(180, 255, 255, 255))
+                            setTextColor(Color.argb(179, 255, 255, 255))
                             setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
                             isSingleLine = true
                             ellipsize = TextUtils.TruncateAt.END
@@ -832,16 +894,92 @@ object NovaOverlay {
                     },
                     LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
                         marginStart = dp(12f)
+                        marginEnd = dp(10f)
                     },
                 )
+                for ((i, h) in listOf(12f, 22f, 16f).withIndex()) {
+                    addView(
+                        View(c).apply {
+                            background = GradientDrawable().apply {
+                                setColor(if (playing) accent else muted)
+                                cornerRadius = dp(2f).toFloat()
+                            }
+                        },
+                        LinearLayout.LayoutParams(dp(4f), dp(h)).apply { if (i > 0) marginStart = dp(3f) },
+                    )
+                }
             })
 
+            // Seek bar gelombang mini (tap / geser = loncat)
             addView(
                 LinearLayout(c).apply {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
-                    val soft = Color.argb(32, 255, 255, 255)
+                    val mono = android.graphics.Typeface.MONOSPACE
+                    posText = TextView(c).apply {
+                        setTextColor(accent)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
+                        typeface = mono
+                    }
+                    addView(posText, LinearLayout.LayoutParams(dp(42f), LinearLayout.LayoutParams.WRAP_CONTENT))
+
+                    val wave = LinearLayout(c).apply {
+                        orientation = LinearLayout.HORIZONTAL
+                        gravity = Gravity.CENTER_VERTICAL
+                    }
+                    val rnd = java.util.Random(songId)
+                    val bars = ArrayList<View>()
+                    for (i in 0 until 36) {
+                        val h = 0.3f + 0.7f * (0.5f + 0.5f * kotlin.math.sin(i * 0.55f)) * (0.6f + rnd.nextFloat() * 0.4f)
+                        val bar = View(c).apply {
+                            background = GradientDrawable().apply {
+                                setColor(Color.argb(51, 255, 255, 255))
+                                cornerRadius = dp(2f).toFloat()
+                            }
+                        }
+                        wave.addView(bar, LinearLayout.LayoutParams(0, dp(18f * h), 1f).apply {
+                            if (i > 0) marginStart = dp(2f)
+                        })
+                        bars.add(bar)
+                    }
+                    waveBars = bars
+                    wave.setOnTouchListener { v, ev ->
+                        if (ev.action == MotionEvent.ACTION_UP && v.width > 0 && durMs > 0) {
+                            val f = (ev.x / v.width).coerceIn(0f, 1f)
+                            posMs = (durMs * f).toLong()
+                            bindProgress()
+                            channel?.invokeMethod("seek", f.toDouble())
+                        }
+                        true
+                    }
+                    addView(wave, LinearLayout.LayoutParams(0, dp(24f), 1f))
+
+                    durText = TextView(c).apply {
+                        setTextColor(Color.argb(153, 255, 255, 255))
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 10.5f)
+                        typeface = mono
+                        gravity = Gravity.END
+                    }
+                    addView(durText, LinearLayout.LayoutParams(dp(42f), LinearLayout.LayoutParams.WRAP_CONTENT))
+                },
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                    .apply { topMargin = dp(12f) },
+            )
+
+            // Kontrol simetris: favorit · sebelumnya · PLAY · berikutnya · buka
+            addView(
+                LinearLayout(c).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    val soft = Color.argb(31, 255, 255, 255)
                     fun gap() = View(c).apply { layoutParams = LinearLayout.LayoutParams(0, 1, 1f) }
+                    favText = circleText(c, "♡", 40f, "Favorit") {
+                        fav = !fav
+                        bindProgress()
+                        channel?.invokeMethod("toggleFav", null)
+                    }
+                    addView(favText)
+                    addView(gap())
                     addView(iconButton(c, android.R.drawable.ic_media_previous, 48f, soft, Color.WHITE, "Lagu sebelumnya") {
                         mediaKey(c, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
                     })
@@ -858,30 +996,17 @@ object NovaOverlay {
                         mediaKey(c, KeyEvent.KEYCODE_MEDIA_NEXT)
                     })
                     addView(gap())
-                    addView(TextView(c).apply {
-                        text = "Buka"
-                        setTextColor(Color.WHITE)
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                        paint.isFakeBoldText = true
-                        gravity = Gravity.CENTER
-                        setPadding(dp(18f), 0, dp(18f), 0)
-                        background = GradientDrawable().apply {
-                            setColor(soft)
-                            cornerRadius = dp(24f).toFloat()
-                            setStroke(dp(1f), Color.argb(40, 255, 255, 255))
-                        }
-                        contentDescription = "Buka Nova"
-                        setOnClickListener {
-                            mode = Mode.HIDDEN
-                            openApp(c)
-                        }
-                        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48f))
+                    addView(circleText(c, "↗", 40f, "Buka pemutar") {
+                        mode = Mode.HIDDEN
+                        openApp(c)
                     })
                 },
                 LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                    .apply { topMargin = dp(16f) },
+                    .apply { topMargin = dp(12f) },
             )
-        })
+        }, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT))
+
+        bindProgress()
     }
 
     /** Pegangan kaca: kapsul tipis bening berbingkai, area tap-nya lebih besar dari tampilannya. */

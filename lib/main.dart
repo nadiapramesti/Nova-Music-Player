@@ -18,7 +18,7 @@ Future<void> main() async {
     androidNotificationOngoing: true,
   );
   await stats.init();
-  await island.init(audio);
+  await island.init(audio, stats);
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   // Produksi selalu gelap. Mode demo bisa mulai terang: --dart-define=DEMO_THEME=light
