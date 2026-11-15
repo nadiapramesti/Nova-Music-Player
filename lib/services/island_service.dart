@@ -29,6 +29,7 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     void push() => _send('update', {
           'id': audio.current.value?.id ?? -1,
           'title': audio.current.value?.title ?? '',
+          'artist': audio.current.value?.artist ?? '',
           'playing': audio.player.playing,
         });
     audio.current.addListener(push);
@@ -47,6 +48,15 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     try {
       await _ch.invokeMethod<void>(method, args);
     } catch (_) {}
+  }
+
+  /// Tampilkan pil di luar app selama 5 detik. Balikin pesan error, null kalau berhasil.
+  Future<String?> test() async {
+    try {
+      return await _ch.invokeMethod<String>('test');
+    } catch (e) {
+      return e.toString();
+    }
   }
 
   void setInApp(bool v) {

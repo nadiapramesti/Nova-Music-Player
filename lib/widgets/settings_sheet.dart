@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../services/services.dart';
 import '../theme.dart';
+import 'controls.dart';
 
 void showSettingsSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
+    isScrollControlled: true,
     builder: (context) => Padding(
       padding: EdgeInsets.fromLTRB(8, 0, 8, MediaQuery.of(context).padding.bottom + 8),
       child: Glass(
         strong: true,
         radius: 28,
         padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        child: ListenableBuilder(
+        child: SingleChildScrollView(child: ListenableBuilder(
           listenable: island,
           builder: (context, _) => Column(
             mainAxisSize: MainAxisSize.min,
@@ -31,14 +33,16 @@ void showSettingsSheet(BuildContext context) {
               const SizedBox(height: 10),
               _Toggle(
                 title: 'Tetap tampil di luar app',
-                body: 'Pil ikut muncul di atas app lain. Butuh izin "Tampil di atas aplikasi lain". '
-                    'Tap = buka Nova, tahan atau geser ke atas = sembunyiin.',
+                body: 'Pil ikut muncul di atas app lain. Tap pil = kartu lagu, geser ke atas = '
+                    'sembunyi jadi titik kecil, tap titiknya = muncul lagi. Tahan = buka Nova.',
                 value: island.outside,
                 onChanged: island.setOutside,
               ),
+              const SizedBox(height: 12),
+              const _OutsideTester(),
             ],
           ),
-        ),
+        )),
       ),
     ),
   );
@@ -87,6 +91,80 @@ class _Toggle extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Status izin + tombol tes pil di luar app.
+class _OutsideTester extends StatefulWidget {
+  const _OutsideTester();
+
+  @override
+  State<_OutsideTester> createState() => _OutsideTesterState();
+}
+
+class _OutsideTesterState extends State<_OutsideTester> {
+  String? _msg;
+  bool? _granted;
+
+  @override
+  void initState() {
+    super.initState();
+    _check();
+  }
+
+  Future<void> _check() async {
+    final ok = await island.canDraw();
+    if (mounted) setState(() => _granted = ok);
+  }
+
+  Future<void> _test() async {
+    final err = await island.test();
+    await _check();
+    if (!mounted) return;
+    setState(() => _msg = err ?? 'Pil muncul 5 detik di notch. Kalau gak keliatan, cek petunjuk di bawah.');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final granted = _granted;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              granted == true ? Icons.check_circle_rounded : Icons.error_outline_rounded,
+              size: 18,
+              color: granted == true ? Nv.accent : Nv.muted,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                granted == null
+                    ? 'Ngecek izin…'
+                    : granted
+                        ? 'Izin tampil di atas aplikasi lain: aktif'
+                        : 'Izin tampil di atas aplikasi lain: belum aktif',
+                style: disp(13, w: 600),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        WideButton(label: 'Coba pil sekarang', icon: Icons.bolt_rounded, primary: false, onTap: _test),
+        if (_msg != null) ...[
+          const SizedBox(height: 8),
+          Text(_msg!, style: disp(12.5, w: 600, color: Nv.accent, height: 1.35)),
+        ],
+        const SizedBox(height: 8),
+        Text(
+          'HP Oppo / Realme / OnePlus: buka Pengaturan › Aplikasi › Nova, aktifkan '
+          '"Tampilkan di atas aplikasi lain" atau "Jendela mengambang", lalu matikan '
+          'optimasi baterai buat Nova.',
+          style: disp(12, w: 500, color: Nv.muted, height: 1.4),
+        ),
+      ],
     );
   }
 }

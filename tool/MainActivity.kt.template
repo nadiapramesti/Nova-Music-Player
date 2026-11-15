@@ -27,6 +27,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.ViewOutlineProvider
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -109,10 +110,12 @@ class MainActivity : AudioServiceActivity() {
                     NovaOverlay.update(
                         id = call.argument<Number>("id")?.toLong() ?: -1L,
                         title = call.argument<String>("title") ?: "",
+                        artist = call.argument<String>("artist") ?: "",
                         playing = call.argument<Boolean>("playing") ?: false,
                     )
                     result.success(null)
                 }
+                "test" -> result.success(NovaOverlay.test())
                 else -> result.notImplemented()
             }
         }
@@ -217,27 +220,38 @@ object NovaMedia {
 }
 
 /**
- * Pulau di notch versi luar app: pil hitam di atas app lain.
- * Muncul kalau: diaktifkan, izin "tampil di atas app lain" ada, ada lagu, dan Nova lagi di belakang.
- * Tap pil = buka Nova. Tombol = play/jeda. Geser ke atas / tahan lama = sembunyikan
- * (muncul lagi setelah Nova dibuka).
+ * Pulau di notch versi luar app (izin "tampil di atas app lain").
+ * Tiga tahap:
+ *  - HIDDEN  : kapsul kecil di notch. Tap = muncul jadi pil.
+ *  - PILL    : cover + judul + play/jeda. Tap = kartu lagu, geser ke atas = sembunyi.
+ *  - EXPANDED: kartu kayak notifikasi (sebelumnya / play / berikutnya / buka Nova).
+ *              Tap kosong / tap di luar = balik ke pil, geser ke atas = sembunyi.
  */
 @SuppressLint("StaticFieldLeak")
 object NovaOverlay {
+    enum class Mode { HIDDEN, PILL, EXPANDED }
+
     var enabled = false
 
     private var ctx: Context? = null
     private val main = Handler(Looper.getMainLooper())
     private var appVisible = true
-    private var dismissed = false
+    private var mode = Mode.PILL
+    private var testUntil = 0L
+
     private var songId = -1L
     private var title = ""
+    private var artist = ""
     private var playing = false
+    private var coverBmp: Bitmap? = null
 
-    private var root: LinearLayout? = null
-    private var cover: ImageView? = null
-    private var titleView: TextView? = null
-    private var playButton: ImageView? = null
+    private var root: FrameLayout? = null
+    private var params: WindowManager.LayoutParams? = null
+
+    private val text = Color.rgb(236, 238, 245)
+    private val muted = Color.rgb(143, 149, 168)
+    private val accent = Color.rgb(174, 185, 255)
+    private val onAccent = Color.rgb(12, 16, 48)
 
     fun init(c: Context) {
         if (ctx == null) ctx = c.applicationContext
@@ -248,24 +262,42 @@ object NovaOverlay {
 
     fun setAppVisible(visible: Boolean) {
         appVisible = visible
-        if (visible) dismissed = false
         refresh()
     }
 
-    fun update(id: Long, title: String, playing: Boolean) {
-        val songChanged = id != songId
+    fun update(id: Long, title: String, artist: String, playing: Boolean) {
+        val changed = id != songId
         songId = id
         this.title = title
+        this.artist = artist
         this.playing = playing
-        if (songChanged) loadCover()
+        if (changed) {
+            coverBmp = null
+            loadCover()
+        }
         refresh()
+        render()
     }
 
-    fun refresh() {
-        val c = ctx ?: return
-        val show = enabled && !appVisible && !dismissed && songId >= 0 && canDraw(c)
-        if (show) attach(c) else detach()
-        bind()
+    /** Tampilkan pil 5 detik walau Nova lagi dibuka, buat ngetes izin. Balikin pesan error kalau gagal. */
+    fun test(): String? {
+        val c = ctx ?: return "Nova belum siap"
+        if (!canDraw(c)) return "Izin \"tampil di atas aplikasi lain\" belum aktif"
+        if (songId < 0) return "Putar satu lagu dulu"
+        testUntil = System.currentTimeMillis() + 5000
+        mode = Mode.PILL
+        main.postDelayed({ refresh() }, 5100)
+        return refresh()
+    }
+
+    fun refresh(): String? {
+        val c = ctx ?: return null
+        val testing = System.currentTimeMillis() < testUntil
+        val show = (enabled || testing) && (!appVisible || testing) && songId >= 0 && canDraw(c)
+        return if (show) attach(c) else {
+            detach()
+            null
+        }
     }
 
     private fun dp(v: Float): Int {
@@ -273,104 +305,69 @@ object NovaOverlay {
         return TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, c.resources.displayMetrics).toInt()
     }
 
-    private fun bind() {
-        titleView?.text = title
-        playButton?.setImageResource(
-            if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play
-        )
-    }
-
     private fun loadCover() {
         val c = ctx ?: return
         val id = songId
         NovaMedia.io.execute {
             val bmp = try {
-                NovaMedia.artworkBitmap(c, id, 96)
+                NovaMedia.artworkBitmap(c, id, 160)
             } catch (e: Exception) {
                 null
             }
             main.post {
-                if (id != songId) return@post
-                if (bmp != null) cover?.setImageBitmap(bmp) else cover?.setImageDrawable(null)
+                if (id == songId) {
+                    coverBmp = bmp
+                    render()
+                }
             }
         }
     }
 
+    private fun wm(c: Context) = c.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
     @SuppressLint("ClickableViewAccessibility")
-    private fun attach(c: Context) {
-        if (root != null) return
-        val wm = c.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-
-        val pill = LinearLayout(c).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(5f), 0, dp(4f), 0)
-            background = GradientDrawable().apply {
-                setColor(Color.BLACK)
-                cornerRadius = dp(17f).toFloat()
-                setStroke(dp(1f), Color.argb(26, 255, 255, 255))
-            }
-            contentDescription = "Nova: kembali ke pemutar"
-        }
-
-        val art = ImageView(c).apply {
-            scaleType = ImageView.ScaleType.CENTER_CROP
-            setBackgroundColor(Color.argb(30, 255, 255, 255))
-            outlineProvider = object : ViewOutlineProvider() {
-                override fun getOutline(view: View, outline: Outline) {
-                    outline.setOval(0, 0, view.width, view.height)
-                }
-            }
-            clipToOutline = true
-        }
-        pill.addView(art, LinearLayout.LayoutParams(dp(24f), dp(24f)))
-
-        val text = TextView(c).apply {
-            setTextColor(Color.rgb(236, 238, 245))
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
-            paint.isFakeBoldText = true
-            isSingleLine = true
-            ellipsize = TextUtils.TruncateAt.MARQUEE
-            marqueeRepeatLimit = -1
-            isSelected = true
-        }
-        pill.addView(
-            text,
-            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = dp(8f)
-                marginEnd = dp(4f)
-            },
-        )
-
-        val play = ImageView(c).apply {
-            setColorFilter(Color.rgb(174, 185, 255))
-            setPadding(dp(5f), dp(5f), dp(5f), dp(5f))
-            contentDescription = "Putar atau jeda"
-            setOnClickListener { sendPlayPause(c) }
-        }
-        pill.addView(play, LinearLayout.LayoutParams(dp(28f), dp(28f)))
+    private fun attach(c: Context): String? {
+        if (root != null) return null
+        val frame = FrameLayout(c)
 
         val gestures = GestureDetector(c, object : GestureDetector.SimpleOnGestureListener() {
             override fun onDown(e: MotionEvent): Boolean = true
 
             override fun onSingleTapUp(e: MotionEvent): Boolean {
-                openApp(c)
+                setMode(
+                    when (mode) {
+                        Mode.HIDDEN -> Mode.PILL
+                        Mode.PILL -> Mode.EXPANDED
+                        Mode.EXPANDED -> Mode.PILL
+                    }
+                )
                 return true
             }
 
             override fun onFling(e1: MotionEvent?, e2: MotionEvent, vx: Float, vy: Float): Boolean {
-                if (vy < -600) {
-                    dismiss()
+                if (vy < -500 && mode != Mode.HIDDEN) {
+                    setMode(Mode.HIDDEN)
+                    return true
+                }
+                if (vy > 500 && mode != Mode.EXPANDED) {
+                    setMode(Mode.EXPANDED)
                     return true
                 }
                 return false
             }
 
             override fun onLongPress(e: MotionEvent) {
-                dismiss()
+                openApp(c)
             }
         })
-        pill.setOnTouchListener { _, ev -> gestures.onTouchEvent(ev) }
+        frame.setOnTouchListener { _, ev ->
+            if (ev.action == MotionEvent.ACTION_OUTSIDE) {
+                if (mode == Mode.EXPANDED) setMode(Mode.PILL)
+                true
+            } else {
+                gestures.onTouchEvent(ev)
+            }
+        }
 
         @Suppress("DEPRECATION")
         val type = if (Build.VERSION.SDK_INT >= 26) {
@@ -378,19 +375,17 @@ object NovaOverlay {
         } else {
             WindowManager.LayoutParams.TYPE_PHONE
         }
-        val statusId = c.resources.getIdentifier("status_bar_height", "dimen", "android")
-        val statusH = if (statusId > 0) c.resources.getDimensionPixelSize(statusId) else dp(24f)
-        val params = WindowManager.LayoutParams(
+        val p = WindowManager.LayoutParams(
             dp(210f),
             dp(34f),
             type,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH or
                 WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
                 WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = maxOf(dp(4f), (statusH - dp(34f)) / 2)
             if (Build.VERSION.SDK_INT >= 28) {
                 layoutInDisplayCutoutMode =
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
@@ -398,38 +393,241 @@ object NovaOverlay {
         }
 
         try {
-            wm.addView(pill, params)
+            wm(c).addView(frame, p)
         } catch (e: Exception) {
-            return
+            return "Gagal tampil: ${e.javaClass.simpleName} ${e.message ?: ""}".trim()
         }
-        root = pill
-        cover = art
-        titleView = text
-        playButton = play
-        pill.alpha = 0f
-        pill.scaleX = 0.6f
-        pill.animate().alpha(1f).scaleX(1f).setDuration(220).start()
-        loadCover()
+        root = frame
+        params = p
+        render()
+        return null
     }
 
     private fun detach() {
         val view = root ?: return
         root = null
-        cover = null
-        titleView = null
-        playButton = null
+        params = null
         try {
-            (ctx?.getSystemService(Context.WINDOW_SERVICE) as? WindowManager)?.removeView(view)
+            ctx?.let { wm(it).removeView(view) }
         } catch (e: Exception) {
             // abaikan
         }
     }
 
-    private fun dismiss() {
-        dismissed = true
-        val view = root ?: return
-        view.animate().translationY(-dp(40f).toFloat()).alpha(0f).setDuration(200)
-            .withEndAction { refresh() }.start()
+    private fun setMode(m: Mode) {
+        mode = m
+        render()
+    }
+
+    private fun statusBarHeight(c: Context): Int {
+        val id = c.resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (id > 0) c.resources.getDimensionPixelSize(id) else dp(24f)
+    }
+
+    /** Bangun ulang isi pulau sesuai tahap sekarang. */
+    private fun render() {
+        val c = ctx ?: return
+        val frame = root ?: return
+        val p = params ?: return
+        frame.removeAllViews()
+        val statusH = statusBarHeight(c)
+        val screenW = c.resources.displayMetrics.widthPixels
+
+        val child: View = when (mode) {
+            Mode.HIDDEN -> {
+                p.width = dp(64f)
+                p.height = dp(22f)
+                p.y = maxOf(dp(4f), (statusH - dp(22f)) / 2)
+                hiddenView(c)
+            }
+            Mode.PILL -> {
+                p.width = dp(220f)
+                p.height = dp(34f)
+                p.y = maxOf(dp(4f), (statusH - dp(34f)) / 2)
+                pillView(c)
+            }
+            Mode.EXPANDED -> {
+                p.width = screenW - dp(20f)
+                p.height = WindowManager.LayoutParams.WRAP_CONTENT
+                p.y = maxOf(dp(6f), (statusH - dp(34f)) / 2)
+                expandedView(c)
+            }
+        }
+        frame.addView(
+            child,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                if (mode == Mode.EXPANDED) FrameLayout.LayoutParams.WRAP_CONTENT
+                else FrameLayout.LayoutParams.MATCH_PARENT,
+            ),
+        )
+        try {
+            wm(c).updateViewLayout(frame, p)
+        } catch (e: Exception) {
+            // abaikan
+        }
+        child.alpha = 0f
+        child.scaleX = 0.92f
+        child.scaleY = 0.92f
+        child.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(180).start()
+    }
+
+    private fun panelBg(radius: Float) = GradientDrawable().apply {
+        setColor(Color.BLACK)
+        cornerRadius = dp(radius).toFloat()
+        setStroke(dp(1f), Color.argb(34, 255, 255, 255))
+    }
+
+    private fun circle(color: Int) = GradientDrawable().apply {
+        shape = GradientDrawable.OVAL
+        setColor(color)
+    }
+
+    private fun coverView(c: Context, size: Float, round: Boolean): ImageView =
+        ImageView(c).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            setBackgroundColor(Color.argb(30, 255, 255, 255))
+            coverBmp?.let { setImageBitmap(it) }
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    if (round) outline.setOval(0, 0, view.width, view.height)
+                    else outline.setRoundRect(0, 0, view.width, view.height, dp(12f).toFloat())
+                }
+            }
+            clipToOutline = true
+            layoutParams = LinearLayout.LayoutParams(dp(size), dp(size))
+        }
+
+    private fun iconButton(c: Context, icon: Int, size: Float, bg: Int, tint: Int, desc: String, action: () -> Unit) =
+        ImageView(c).apply {
+            setImageResource(icon)
+            setColorFilter(tint)
+            val pad = dp(size * 0.24f)
+            setPadding(pad, pad, pad, pad)
+            background = circle(bg)
+            contentDescription = desc
+            setOnClickListener { action() }
+            layoutParams = LinearLayout.LayoutParams(dp(size), dp(size))
+        }
+
+    private fun hiddenView(c: Context): View = FrameLayout(c).apply {
+        background = panelBg(11f)
+        contentDescription = "Nova: tampilkan pulau"
+        addView(View(c).apply { background = circle(accent) }, FrameLayout.LayoutParams(dp(6f), dp(6f), Gravity.CENTER))
+    }
+
+    private fun pillView(c: Context): View = LinearLayout(c).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(5f), 0, dp(4f), 0)
+        background = panelBg(17f)
+        contentDescription = "Nova: $title"
+        addView(coverView(c, 24f, true))
+        addView(
+            TextView(c).apply {
+                text = title
+                setTextColor(this@NovaOverlay.text)
+                setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+                paint.isFakeBoldText = true
+                isSingleLine = true
+                ellipsize = TextUtils.TruncateAt.MARQUEE
+                marqueeRepeatLimit = -1
+                isSelected = true
+            },
+            LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = dp(8f)
+                marginEnd = dp(4f)
+            },
+        )
+        addView(
+            iconButton(
+                c,
+                if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
+                28f, Color.TRANSPARENT, accent, "Putar atau jeda",
+            ) { mediaKey(c, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) }
+        )
+    }
+
+    private fun expandedView(c: Context): View = LinearLayout(c).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(16f), dp(16f), dp(16f), dp(14f))
+        background = panelBg(30f)
+
+        addView(LinearLayout(c).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(coverView(c, 52f, false))
+            addView(
+                LinearLayout(c).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(TextView(c).apply {
+                        text = title
+                        setTextColor(this@NovaOverlay.text)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+                        paint.isFakeBoldText = true
+                        isSingleLine = true
+                        ellipsize = TextUtils.TruncateAt.END
+                    })
+                    addView(TextView(c).apply {
+                        text = artist
+                        setTextColor(muted)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
+                        isSingleLine = true
+                        ellipsize = TextUtils.TruncateAt.END
+                    })
+                },
+                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                    marginStart = dp(12f)
+                },
+            )
+        })
+
+        addView(
+            LinearLayout(c).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                val soft = Color.argb(26, 255, 255, 255)
+                addView(iconButton(c, android.R.drawable.ic_media_previous, 46f, soft, text, "Lagu sebelumnya") {
+                    mediaKey(c, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+                })
+                addView(space(c, 10f))
+                addView(
+                    iconButton(
+                        c,
+                        if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
+                        52f, accent, onAccent, "Putar atau jeda",
+                    ) { mediaKey(c, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) }
+                )
+                addView(space(c, 10f))
+                addView(iconButton(c, android.R.drawable.ic_media_next, 46f, soft, text, "Lagu berikutnya") {
+                    mediaKey(c, KeyEvent.KEYCODE_MEDIA_NEXT)
+                })
+                addView(View(c), LinearLayout.LayoutParams(0, 1, 1f))
+                addView(TextView(c).apply {
+                    text = "Buka Nova"
+                    setTextColor(this@NovaOverlay.text)
+                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                    paint.isFakeBoldText = true
+                    gravity = Gravity.CENTER
+                    setPadding(dp(16f), 0, dp(16f), 0)
+                    background = GradientDrawable().apply {
+                        setColor(soft)
+                        cornerRadius = dp(23f).toFloat()
+                    }
+                    setOnClickListener {
+                        mode = Mode.PILL
+                        openApp(c)
+                    }
+                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(46f))
+                })
+            },
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                .apply { topMargin = dp(14f) },
+        )
+    }
+
+    private fun space(c: Context, w: Float) = View(c).apply {
+        layoutParams = LinearLayout.LayoutParams(dp(w), 1)
     }
 
     private fun openApp(c: Context) {
@@ -438,9 +636,9 @@ object NovaOverlay {
         c.startActivity(intent)
     }
 
-    private fun sendPlayPause(c: Context) {
+    private fun mediaKey(c: Context, code: Int) {
         val am = c.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-        am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
-        am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE))
+        am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code))
+        am.dispatchMediaKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code))
     }
 }
