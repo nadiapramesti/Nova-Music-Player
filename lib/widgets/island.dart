@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -119,7 +120,7 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
     // Status bar nyerap tap, jadi pil di dalam app duduk tepat di bawah status bar
     // (gak ketutup kamera, judul kebaca). Mode Aksesibilitas: pil native yang di notch.
     const collapsedH = 30.0;
-    const expandedH = 188.0;
+    const expandedH = 206.0;
     final y = top + 4;
 
     return ListenableBuilder(
@@ -284,121 +285,251 @@ class _Expanded extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final player = audio.player;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
-      child: Column(
-        children: [
-          InkWell(
-            borderRadius: BorderRadius.circular(16),
-            onTap: onOpenPlayer,
-            child: Row(
-              children: [
-                Art(songId: song.id, size: 52, radius: 14),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(song.title,
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(16, w: 800)),
-                      const SizedBox(height: 2),
-                      Text(song.artist,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: disp(12.5, w: 500, color: Nv.muted)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                _EqBars(controller: eq, height: 20),
-              ],
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        // Latar: cover lagu di-blur, jadi warna kartu ikut lagu yang diputar.
+        Positioned.fill(
+          child: ImageFiltered(
+            imageFilter: ImageFilter.blur(sigmaX: 34, sigmaY: 34, tileMode: TileMode.decal),
+            child: Transform.scale(scale: 1.4, child: Art(songId: song.id, radius: 0)),
+          ),
+        ),
+        const Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0x99000000), Color(0xE6000000)],
+              ),
             ),
           ),
-          const SizedBox(height: 12),
-          StreamBuilder<Duration>(
-            stream: player.positionStream,
-            builder: (context, snap) {
-              final pos = snap.data ?? Duration.zero;
-              final total = player.duration ?? song.duration;
-              final f = total.inMilliseconds <= 0
-                  ? 0.0
-                  : (pos.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0);
-              return Row(
-                children: [
-                  Text(fmt(pos), style: mono(11, color: Nv.accent)),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
-                      child: LinearProgressIndicator(
-                        value: f,
-                        minHeight: 4,
-                        backgroundColor: Nv.track,
-                        color: Nv.accent,
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          child: Column(
+            children: [
+              // Baris atas: cover, status + judul + artis, equalizer.
+              InkWell(
+                borderRadius: BorderRadius.circular(16),
+                onTap: onOpenPlayer,
+                child: Row(
+                  children: [
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(14),
+                        boxShadow: const [
+                          BoxShadow(color: Color(0x80000000), blurRadius: 16, offset: Offset(0, 6)),
+                        ],
+                      ),
+                      child: Art(songId: song.id, size: 54, radius: 14),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          StreamBuilder<bool>(
+                            stream: player.playingStream,
+                            builder: (context, snap) => Text(
+                              (snap.data ?? false) ? 'SEDANG DIPUTAR' : 'DIJEDA',
+                              style: mono(9.5, spacing: 1.4, color: const Color(0xFFAEB9FF)),
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(song.title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: disp(16.5, w: 800, color: Colors.white, spacing: -0.3)),
+                          Text(song.artist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: disp(12.5, w: 500, color: const Color(0xB3FFFFFF))),
+                        ],
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(fmt(total), style: mono(11)),
-                ],
-              );
-            },
-          ),
-          const Spacer(),
-          Row(
-            children: [
-              _IslandButton(icon: Icons.skip_previous_rounded, label: 'Lagu sebelumnya', onTap: player.seekToPrevious),
-              const SizedBox(width: 8),
-              Expanded(
-                child: StreamBuilder<PlayerState>(
-                  stream: player.playerStateStream,
-                  builder: (context, snap) {
-                    final playing = snap.data?.playing ?? false;
-                    return _IslandButton(
-                      icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                      label: playing ? 'Jeda' : 'Putar',
-                      onTap: audio.togglePlay,
-                      primary: true,
-                    );
-                  },
+                    const SizedBox(width: 10),
+                    _EqBars(controller: eq, height: 22),
+                    const SizedBox(width: 4),
+                  ],
                 ),
               ),
-              const SizedBox(width: 8),
-              _IslandButton(icon: Icons.skip_next_rounded, label: 'Lagu berikutnya', onTap: player.seekToNext),
-              const SizedBox(width: 8),
-              _IslandButton(icon: Icons.open_in_full_rounded, label: 'Buka pemutar', onTap: onOpenPlayer),
+              const SizedBox(height: 12),
+              _MiniWave(song: song),
+              const SizedBox(height: 12),
+              // Kontrol simetris: favorit · sebelumnya · PLAY · berikutnya · buka pemutar.
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  ListenableBuilder(
+                    listenable: stats,
+                    builder: (context, _) {
+                      final fav = stats.isFav(song.id);
+                      return _IslandButton(
+                        icon: fav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        label: fav ? 'Hapus dari favorit' : 'Tambah ke favorit',
+                        onTap: () => stats.toggleFav(song.id),
+                        tint: fav ? const Color(0xFFAEB9FF) : null,
+                      );
+                    },
+                  ),
+                  _IslandButton(
+                    icon: Icons.skip_previous_rounded,
+                    label: 'Lagu sebelumnya',
+                    onTap: player.seekToPrevious,
+                    size: 48,
+                  ),
+                  StreamBuilder<PlayerState>(
+                    stream: player.playerStateStream,
+                    builder: (context, snap) {
+                      final playing = snap.data?.playing ?? false;
+                      return _IslandButton(
+                        icon: playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                        label: playing ? 'Jeda' : 'Putar',
+                        onTap: audio.togglePlay,
+                        primary: true,
+                        size: 58,
+                      );
+                    },
+                  ),
+                  _IslandButton(
+                    icon: Icons.skip_next_rounded,
+                    label: 'Lagu berikutnya',
+                    onTap: player.seekToNext,
+                    size: 48,
+                  ),
+                  _IslandButton(
+                    icon: Icons.open_in_full_rounded,
+                    label: 'Buka pemutar',
+                    onTap: onOpenPlayer,
+                    iconSize: 18,
+                  ),
+                ],
+              ),
             ],
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Seek bar gelombang mini di dalam kartu notch; bisa di-tap / digeser.
+class _MiniWave extends StatefulWidget {
+  const _MiniWave({required this.song});
+  final Song song;
+
+  @override
+  State<_MiniWave> createState() => _MiniWaveState();
+}
+
+class _MiniWaveState extends State<_MiniWave> {
+  static const _bars = 36;
+  double? _drag;
+
+  @override
+  Widget build(BuildContext context) {
+    final r = Random(widget.song.id);
+    final heights = List.generate(_bars, (i) => 0.3 + 0.7 * (0.5 + 0.5 * sin(i * 0.55)) * (0.6 + r.nextDouble() * 0.4));
+    return StreamBuilder<Duration>(
+      stream: audio.player.positionStream,
+      builder: (context, snap) {
+        final total = audio.player.duration ?? widget.song.duration;
+        final pos = snap.data ?? Duration.zero;
+        final live = total.inMilliseconds <= 0 ? 0.0 : (pos.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0);
+        final f = _drag ?? live;
+        final shown = Duration(milliseconds: (total.inMilliseconds * f).round());
+        return Row(
+          children: [
+            SizedBox(width: 40, child: Text(fmt(shown), style: mono(10.5, color: const Color(0xFFAEB9FF)))),
+            Expanded(
+              child: LayoutBuilder(builder: (context, c) {
+                double frac(Offset o) => (o.dx / c.maxWidth).clamp(0.0, 1.0);
+                void seek(double v) => audio.player.seek(Duration(milliseconds: (total.inMilliseconds * v).round()));
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: (d) => seek(frac(d.localPosition)),
+                  onHorizontalDragUpdate: (d) => setState(() => _drag = frac(d.localPosition)),
+                  onHorizontalDragEnd: (_) {
+                    if (_drag != null) seek(_drag!);
+                    setState(() => _drag = null);
+                  },
+                  child: SizedBox(
+                    height: 22,
+                    child: Row(
+                      children: [
+                        for (var i = 0; i < _bars; i++) ...[
+                          if (i > 0) const SizedBox(width: 2),
+                          Expanded(
+                            child: Center(
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                height: 18 * heights[i],
+                                decoration: BoxDecoration(
+                                  color: (i + 0.5) / _bars <= f ? const Color(0xFFAEB9FF) : const Color(0x33FFFFFF),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ),
+            SizedBox(
+              width: 40,
+              child: Text(fmt(total), textAlign: TextAlign.right, style: mono(10.5, color: const Color(0x99FFFFFF))),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class _IslandButton extends StatelessWidget {
-  const _IslandButton({required this.icon, required this.label, required this.onTap, this.primary = false});
+  const _IslandButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.primary = false,
+    this.size = 40,
+    this.iconSize,
+    this.tint,
+  });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
   final bool primary;
+  final double size;
+  final double? iconSize;
+  final Color? tint;
 
   @override
   Widget build(BuildContext context) {
-    final r = BorderRadius.circular(18);
     return Semantics(
       button: true,
       label: label,
       child: Material(
-        color: primary ? Nv.accent : const Color(0x1AFFFFFF),
-        borderRadius: r,
+        color: primary ? Colors.white : const Color(0x1FFFFFFF),
+        shape: CircleBorder(
+          side: primary ? BorderSide.none : const BorderSide(color: Color(0x1AFFFFFF)),
+        ),
         child: InkWell(
-          borderRadius: r,
+          customBorder: const CircleBorder(),
           onTap: onTap,
-          child: SizedBox(
-            width: primary ? null : 52,
-            height: 48,
-            child: Icon(icon, size: primary ? 28 : 24, color: primary ? Nv.onAccent : Nv.text),
+          child: SizedBox.square(
+            dimension: size,
+            child: Icon(
+              icon,
+              size: iconSize ?? size * 0.5,
+              color: primary ? Colors.black : (tint ?? Colors.white),
+            ),
           ),
         ),
       ),

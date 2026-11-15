@@ -750,82 +750,137 @@ object NovaOverlay {
         )
     }
 
-    private fun expandedView(c: Context): View = LinearLayout(c).apply {
-        orientation = LinearLayout.VERTICAL
-        setPadding(dp(16f), dp(16f), dp(16f), dp(14f))
+    /** Kartu pemutar ngambang: latar cover di-blur (Android 12+), kontrol simetris. */
+    private fun expandedView(c: Context): View = FrameLayout(c).apply {
         background = panelBg(30f)
+        clipToOutline = true
+        outlineProvider = object : ViewOutlineProvider() {
+            override fun getOutline(view: View, outline: Outline) {
+                outline.setRoundRect(0, 0, view.width, view.height, dp(30f).toFloat())
+            }
+        }
+
+        // Latar warna lagu: cover dibesarin + blur, ditimpa gelap.
+        coverBmp?.let { bmp ->
+            addView(
+                ImageView(c).apply {
+                    setImageBitmap(bmp)
+                    scaleType = ImageView.ScaleType.CENTER_CROP
+                    scaleX = 1.5f
+                    scaleY = 1.5f
+                    if (Build.VERSION.SDK_INT >= 31) {
+                        setRenderEffect(
+                            android.graphics.RenderEffect.createBlurEffect(
+                                dp(28f).toFloat(), dp(28f).toFloat(), android.graphics.Shader.TileMode.CLAMP,
+                            )
+                        )
+                        alpha = 0.9f
+                    } else {
+                        alpha = 0.35f
+                    }
+                },
+                FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+            )
+        }
+        addView(
+            View(c).apply {
+                background = GradientDrawable(
+                    GradientDrawable.Orientation.TOP_BOTTOM,
+                    intArrayOf(Color.argb(150, 0, 0, 0), Color.argb(230, 0, 0, 0)),
+                )
+            },
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT),
+        )
 
         addView(LinearLayout(c).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            addView(coverView(c, 52f, false))
-            addView(
-                LinearLayout(c).apply {
-                    orientation = LinearLayout.VERTICAL
-                    addView(TextView(c).apply {
-                        text = title
-                        setTextColor(this@NovaOverlay.text)
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-                        paint.isFakeBoldText = true
-                        isSingleLine = true
-                        ellipsize = TextUtils.TruncateAt.END
-                    })
-                    addView(TextView(c).apply {
-                        text = artist
-                        setTextColor(muted)
-                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
-                        isSingleLine = true
-                        ellipsize = TextUtils.TruncateAt.END
-                    })
-                },
-                LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                    marginStart = dp(12f)
-                },
-            )
-        })
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14f), dp(14f), dp(14f), dp(14f))
 
-        addView(
-            LinearLayout(c).apply {
+            addView(LinearLayout(c).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                val soft = Color.argb(26, 255, 255, 255)
-                addView(iconButton(c, android.R.drawable.ic_media_previous, 46f, soft, text, "Lagu sebelumnya") {
-                    mediaKey(c, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
-                })
-                addView(space(c, 10f))
+                addView(coverView(c, 54f, false).apply { elevation = dp(6f).toFloat() })
                 addView(
-                    iconButton(
-                        c,
-                        if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
-                        52f, accent, onAccent, "Putar atau jeda",
-                    ) { mediaKey(c, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) }
+                    LinearLayout(c).apply {
+                        orientation = LinearLayout.VERTICAL
+                        addView(TextView(c).apply {
+                            text = if (playing) "SEDANG DIPUTAR" else "DIJEDA"
+                            setTextColor(accent)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 9.5f)
+                            letterSpacing = 0.14f
+                            typeface = android.graphics.Typeface.MONOSPACE
+                            paint.isFakeBoldText = true
+                        })
+                        addView(TextView(c).apply {
+                            text = title
+                            setTextColor(Color.WHITE)
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16.5f)
+                            paint.isFakeBoldText = true
+                            isSingleLine = true
+                            ellipsize = TextUtils.TruncateAt.MARQUEE
+                            marqueeRepeatLimit = -1
+                            isSelected = true
+                        })
+                        addView(TextView(c).apply {
+                            text = artist
+                            setTextColor(Color.argb(180, 255, 255, 255))
+                            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f)
+                            isSingleLine = true
+                            ellipsize = TextUtils.TruncateAt.END
+                        })
+                    },
+                    LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                        marginStart = dp(12f)
+                    },
                 )
-                addView(space(c, 10f))
-                addView(iconButton(c, android.R.drawable.ic_media_next, 46f, soft, text, "Lagu berikutnya") {
-                    mediaKey(c, KeyEvent.KEYCODE_MEDIA_NEXT)
-                })
-                addView(View(c), LinearLayout.LayoutParams(0, 1, 1f))
-                addView(TextView(c).apply {
-                    text = "Buka Nova"
-                    setTextColor(this@NovaOverlay.text)
-                    setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-                    paint.isFakeBoldText = true
-                    gravity = Gravity.CENTER
-                    setPadding(dp(16f), 0, dp(16f), 0)
-                    background = GradientDrawable().apply {
-                        setColor(soft)
-                        cornerRadius = dp(23f).toFloat()
-                    }
-                    setOnClickListener {
-                        mode = Mode.HIDDEN
-                        openApp(c)
-                    }
-                    layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(46f))
-                })
-            },
-            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-                .apply { topMargin = dp(14f) },
-        )
+            })
+
+            addView(
+                LinearLayout(c).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    val soft = Color.argb(32, 255, 255, 255)
+                    fun gap() = View(c).apply { layoutParams = LinearLayout.LayoutParams(0, 1, 1f) }
+                    addView(iconButton(c, android.R.drawable.ic_media_previous, 48f, soft, Color.WHITE, "Lagu sebelumnya") {
+                        mediaKey(c, KeyEvent.KEYCODE_MEDIA_PREVIOUS)
+                    })
+                    addView(gap())
+                    addView(
+                        iconButton(
+                            c,
+                            if (playing) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
+                            58f, Color.WHITE, Color.BLACK, "Putar atau jeda",
+                        ) { mediaKey(c, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE) }
+                    )
+                    addView(gap())
+                    addView(iconButton(c, android.R.drawable.ic_media_next, 48f, soft, Color.WHITE, "Lagu berikutnya") {
+                        mediaKey(c, KeyEvent.KEYCODE_MEDIA_NEXT)
+                    })
+                    addView(gap())
+                    addView(TextView(c).apply {
+                        text = "Buka"
+                        setTextColor(Color.WHITE)
+                        setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+                        paint.isFakeBoldText = true
+                        gravity = Gravity.CENTER
+                        setPadding(dp(18f), 0, dp(18f), 0)
+                        background = GradientDrawable().apply {
+                            setColor(soft)
+                            cornerRadius = dp(24f).toFloat()
+                            setStroke(dp(1f), Color.argb(40, 255, 255, 255))
+                        }
+                        contentDescription = "Buka Nova"
+                        setOnClickListener {
+                            mode = Mode.HIDDEN
+                            openApp(c)
+                        }
+                        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(48f))
+                    })
+                },
+                LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                    .apply { topMargin = dp(16f) },
+            )
+        })
     }
 
     /** Pegangan kaca: kapsul tipis bening berbingkai, area tap-nya lebih besar dari tampilannya. */
