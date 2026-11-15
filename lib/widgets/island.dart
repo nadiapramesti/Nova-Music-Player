@@ -139,15 +139,7 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
                   child: const ColoredBox(color: Color(0x73000000)),
                 ),
               ),
-            // Kapsul di lubang kamera; pas dibuka, kartunya turun ke bawah status bar
-            // biar gak ketutup kamera.
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 380),
-              curve: Curves.easeOutCubic,
-              top: _open ? top + 8 : y,
-              left: 0,
-              right: 0,
-              // Lagi ngumpet: pegangan kaca kecil di bawah status bar, tap = muncul lagi.
+            // Lagi ngumpet: pegangan kaca kecil di bawah status bar, tap = muncul lagi.
             Positioned(
               top: top + 2,
               left: 0,
@@ -182,7 +174,15 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
                 ),
               ),
             ),
-            // Sembunyi otomatis: naik + pudar ke balik status bar.
+            // Kapsul di lubang kamera; pas dibuka, kartunya turun ke bawah status bar
+            // biar gak ketutup kamera.
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 380),
+              curve: Curves.easeOutCubic,
+              top: _open ? top + 8 : y,
+              left: 0,
+              right: 0,
+              // Sembunyi otomatis: naik + pudar ke balik status bar.
               child: IgnorePointer(
                 ignoring: _gone,
                 child: AnimatedSlide(
