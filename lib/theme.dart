@@ -208,6 +208,32 @@ void applySystemBars() {
 FontWeight _fw(double w) => FontWeight.values[((w / 100).round() - 1).clamp(0, 8)];
 
 /// Bricolage Grotesque (variable font): berat diatur lewat FontVariation.
+/// Skala ukuran huruf Nova. Semua teks pakai ini biar seragam.
+abstract final class TS {
+  /// Info kecil di bawah judul (artis · album, keterangan).
+  static const double caption = 12.5;
+
+  /// Paragraf, deskripsi, label tombol kecil/chip.
+  static const double body = 13.5;
+
+  /// Judul baris lagu, isian form, tombol utama.
+  static const double title = 15;
+
+  /// Judul yang lebih menonjol (mini player, kartu).
+  static const double lead = 17;
+
+  /// Judul bagian.
+  static const double h3 = 20;
+
+  /// Judul lembar & layar kosong.
+  static const double h2 = 24;
+
+  /// Mono: label kapital kecil, angka/durasi.
+  static const double monoTiny = 10;
+  static const double label = 11;
+  static const double mono = 12;
+}
+
 TextStyle disp(
   double size, {
   double w = 800,
@@ -219,7 +245,9 @@ TextStyle disp(
     fontFamily: 'Bricolage',
     fontSize: size,
     fontWeight: _fw(w),
-    fontVariations: [FontVariation('wght', w)],
+    // Bricolage punya sumbu "optical size": huruf kecil dibikin lebih lega & kebaca,
+    // huruf besar lebih rapat & tegas. Tanpa ini semua ukuran pakai gaya poster (96).
+    fontVariations: [FontVariation('wght', w), FontVariation('opsz', size.clamp(12, 96).toDouble())],
     color: color ?? Nv.text,
     height: height,
     letterSpacing: spacing,

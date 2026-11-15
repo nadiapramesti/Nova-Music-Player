@@ -116,12 +116,12 @@ class _NowRow extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(song.title,
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(14, w: 700)),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.body, w: 700)),
                       StreamBuilder<Duration>(
                         stream: audio.player.positionStream,
                         builder: (context, snap) => Text(
                           '${fmt(snap.data ?? Duration.zero)} / ${fmt(song.duration)}',
-                          style: mono(11.5, w: 500),
+                          style: mono(TS.label, w: 500),
                         ),
                       ),
                     ],
@@ -224,7 +224,7 @@ class _NavBar extends StatelessWidget {
                           child: Center(
                             child: AnimatedDefaultTextStyle(
                               duration: const Duration(milliseconds: 250),
-                              style: disp(13, w: i == tab ? 800 : 700, color: i == tab ? Nv.bg : Nv.text),
+                              style: disp(TS.body, w: i == tab ? 800 : 700, color: i == tab ? Nv.bg : Nv.text),
                               child: Text(Deck.tabs[i]),
                             ),
                           ),

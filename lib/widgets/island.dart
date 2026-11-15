@@ -265,7 +265,7 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
           const SizedBox(width: 8),
           Expanded(
             child: Text(song.title,
-                maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(12, w: 700)),
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.caption, w: 700)),
           ),
           const SizedBox(width: 8),
           _EqBars(controller: _eq, height: 12),
@@ -334,18 +334,18 @@ class _Expanded extends StatelessWidget {
                             stream: player.playingStream,
                             builder: (context, snap) => Text(
                               (snap.data ?? false) ? 'SEDANG DIPUTAR' : 'DIJEDA',
-                              style: mono(9.5, spacing: 1.4, color: const Color(0xFFAEB9FF)),
+                              style: mono(TS.monoTiny, spacing: 1.4, color: const Color(0xFFAEB9FF)),
                             ),
                           ),
                           const SizedBox(height: 3),
                           Text(song.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: disp(16.5, w: 800, color: Colors.white, spacing: -0.3)),
+                              style: disp(TS.lead, w: 800, color: Colors.white, spacing: -0.3)),
                           Text(song.artist,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: disp(12.5, w: 500, color: const Color(0xB3FFFFFF))),
+                              style: disp(TS.caption, w: 500, color: const Color(0xB3FFFFFF))),
                         ],
                       ),
                     ),
@@ -442,7 +442,7 @@ class _MiniWaveState extends State<_MiniWave> {
         final shown = Duration(milliseconds: (total.inMilliseconds * f).round());
         return Row(
           children: [
-            SizedBox(width: 40, child: Text(fmt(shown), style: mono(10.5, color: const Color(0xFFAEB9FF)))),
+            SizedBox(width: 40, child: Text(fmt(shown), style: mono(TS.label, color: const Color(0xFFAEB9FF)))),
             Expanded(
               child: LayoutBuilder(builder: (context, c) {
                 double frac(Offset o) => (o.dx / c.maxWidth).clamp(0.0, 1.0);
@@ -482,7 +482,7 @@ class _MiniWaveState extends State<_MiniWave> {
             ),
             SizedBox(
               width: 40,
-              child: Text(fmt(total), textAlign: TextAlign.right, style: mono(10.5, color: const Color(0x99FFFFFF))),
+              child: Text(fmt(total), textAlign: TextAlign.right, style: mono(TS.label, color: const Color(0x99FFFFFF))),
             ),
           ],
         );

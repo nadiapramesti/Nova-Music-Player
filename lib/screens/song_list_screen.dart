@@ -78,12 +78,12 @@ class SongListScreen extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('HAPUS PLAYLIST', style: mono(11, spacing: 1.2)),
+          Text('HAPUS PLAYLIST', style: mono(TS.label, spacing: 1.2)),
           const SizedBox(height: 4),
-          Text('Hapus "$name"?', style: disp(22, spacing: -0.6)),
+          Text('Hapus "$name"?', style: disp(TS.h2, spacing: -0.6)),
           const SizedBox(height: 6),
           Text('Lagunya tetap ada di HP, cuma playlist-nya yang dihapus.',
-              style: disp(13.5, w: 500, color: Nv.muted, height: 1.35)),
+              style: disp(TS.body, w: 500, color: Nv.muted, height: 1.35)),
           const SizedBox(height: 16),
           WideButton(
             label: 'Batal',
@@ -127,12 +127,12 @@ class SongListScreen extends StatelessWidget {
                         onTap: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(height: 18),
-                      Text(eyebrow.toUpperCase(), style: mono(11, spacing: 1.2)),
+                      Text(eyebrow.toUpperCase(), style: mono(TS.label, spacing: 1.2)),
                       const SizedBox(height: 4),
                       Text(title, style: disp(34, height: 1.0, spacing: -1.2)),
                       const SizedBox(height: 6),
                       Text('${songs.length} LAGU · ${fmt(Duration(milliseconds: total))}',
-                          style: mono(12, w: 500)),
+                          style: mono(TS.mono, w: 500)),
                       if (playlistId != null) ...[
                         const SizedBox(height: 14),
                         Row(
@@ -190,7 +190,7 @@ class SongListScreen extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
                     child: Text(emptyText,
-                        textAlign: TextAlign.center, style: disp(14, w: 500, color: Nv.muted)),
+                        textAlign: TextAlign.center, style: disp(TS.body, w: 500, color: Nv.muted)),
                   ),
                 )
               else

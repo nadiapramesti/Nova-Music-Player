@@ -62,7 +62,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
-                  child: Text('JUDUL, ARTIS, ATAU ALBUM', style: mono(10.5, spacing: 1.2)),
+                  child: Text('JUDUL, ARTIS, ATAU ALBUM', style: mono(TS.label, spacing: 1.2)),
                 ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 6, 20, 0),
@@ -75,10 +75,10 @@ class _SearchScreenState extends State<SearchScreen> {
                       onSubmitted: stats.addRecent,
                       keyboardType: TextInputType.text,
                       textInputAction: TextInputAction.search,
-                      style: disp(15, w: 600),
+                      style: disp(TS.title, w: 600),
                       decoration: InputDecoration(
                         hintText: 'Contoh: Hujan Bulan Juni',
-                        hintStyle: disp(15, w: 500, color: Nv.muted),
+                        hintStyle: disp(TS.title, w: 500, color: Nv.muted),
                         prefixIcon: Icon(Icons.search_rounded, color: Nv.text),
                         suffixIcon: _q.isEmpty
                             ? null
@@ -108,14 +108,14 @@ class _SearchScreenState extends State<SearchScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
           child: Text('Gak ketemu. Coba kata kunci lain.',
-              textAlign: TextAlign.center, style: disp(14, w: 500, color: Nv.muted)),
+              textAlign: TextAlign.center, style: disp(TS.body, w: 500, color: Nv.muted)),
         ),
       ];
     }
     return [
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
-        child: Text('${results.length} HASIL', style: mono(11, spacing: 1)),
+        child: Text('${results.length} HASIL', style: mono(TS.label, spacing: 1)),
       ),
       for (final (i, s) in results.indexed)
         SongRow(
@@ -146,7 +146,7 @@ class _SearchScreenState extends State<SearchScreen> {
       if (stats.recent.isNotEmpty) ...[
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
-          child: Text('Terakhir dicari', style: disp(20, spacing: -0.5)),
+          child: Text('Terakhir dicari', style: disp(TS.h3, spacing: -0.5)),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -163,7 +163,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     onTap: () => _set(r),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                      child: Text(r, style: disp(13, w: 700)),
+                      child: Text(r, style: disp(TS.body, w: 700)),
                     ),
                   ),
                 ),
@@ -173,7 +173,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ],
       Padding(
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-        child: Text('Putar dari catatan lu', style: disp(20, spacing: -0.5)),
+        child: Text('Putar dari catatan lu', style: disp(TS.h3, spacing: -0.5)),
       ),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -226,8 +226,8 @@ class _Tile extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(eyebrow, style: mono(11, color: highlight ? Nv.onAccent : Nv.muted)),
-              Text(title, style: disp(18, height: 1.05, spacing: -0.4, color: fg)),
+              Text(eyebrow, style: mono(TS.label, color: highlight ? Nv.onAccent : Nv.muted)),
+              Text(title, style: disp(TS.lead, height: 1.05, spacing: -0.4, color: fg)),
             ],
           ),
         ),

@@ -50,9 +50,9 @@ void showSongActions(BuildContext context, Song song, {String? playlistId}) {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(17)),
+                      Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.lead)),
                       Text('${song.artist} · ${song.album}',
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(12.5, w: 500, color: Nv.muted)),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.caption, w: 500, color: Nv.muted)),
                     ],
                   ),
                 ),
@@ -127,15 +127,15 @@ void showAddToPlaylist(BuildContext context, Song song) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('TAMBAH KE PLAYLIST', style: mono(11, spacing: 1.2)),
+            Text('TAMBAH KE PLAYLIST', style: mono(TS.label, spacing: 1.2)),
             const SizedBox(height: 4),
-            Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(22, spacing: -0.6)),
+            Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.h2, spacing: -0.6)),
             const SizedBox(height: 14),
             if (items.isEmpty)
               Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text('Belum ada playlist. Bikin satu dulu ya.',
-                    style: disp(13.5, w: 500, color: Nv.muted)),
+                    style: disp(TS.body, w: 500, color: Nv.muted)),
               )
             else
               ConstrainedBox(
@@ -190,11 +190,11 @@ Future<String?> askPlaylistName(BuildContext context, {required String title, St
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('PLAYLIST', style: mono(11, spacing: 1.2)),
+        Text('PLAYLIST', style: mono(TS.label, spacing: 1.2)),
         const SizedBox(height: 4),
-        Text(title, style: disp(24, spacing: -0.6)),
+        Text(title, style: disp(TS.h2, spacing: -0.6)),
         const SizedBox(height: 14),
-        Text('NAMA PLAYLIST', style: mono(10.5, spacing: 1.2)),
+        Text('NAMA PLAYLIST', style: mono(TS.label, spacing: 1.2)),
         const SizedBox(height: 6),
         Glass(
           radius: 16,
@@ -206,10 +206,10 @@ Future<String?> askPlaylistName(BuildContext context, {required String title, St
             textCapitalization: TextCapitalization.sentences,
             textInputAction: TextInputAction.done,
             onSubmitted: (_) => submit(),
-            style: disp(15, w: 600),
+            style: disp(TS.title, w: 600),
             decoration: InputDecoration(
               hintText: 'Contoh: Lagu buat nyetir',
-              hintStyle: disp(15, w: 500, color: Nv.muted),
+              hintStyle: disp(TS.title, w: 500, color: Nv.muted),
               counterText: '',
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -254,13 +254,13 @@ void showEditSong(BuildContext context, Song song) {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('INFO LAGU', style: mono(11, spacing: 1.2)),
+          Text('INFO LAGU', style: mono(TS.label, spacing: 1.2)),
           const SizedBox(height: 4),
-          Text('Ubah info lagu', style: disp(24, spacing: -0.6)),
+          Text('Ubah info lagu', style: disp(TS.h2, spacing: -0.6)),
           const SizedBox(height: 4),
           Text(
             'Cuma berubah di Nova. File lagunya tetap seperti aslinya.',
-            style: disp(12.5, w: 500, color: Nv.muted, height: 1.35),
+            style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.35),
           ),
           const SizedBox(height: 14),
           _EditField(label: 'JUDUL', controller: title, hint: 'Contoh: Senja di Kota', autofocus: true),
@@ -310,7 +310,7 @@ class _EditField extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: mono(10.5, spacing: 1.2)),
+          Text(label, style: mono(TS.label, spacing: 1.2)),
           const SizedBox(height: 6),
           Glass(
             radius: 16,
@@ -321,10 +321,10 @@ class _EditField extends StatelessWidget {
               keyboardType: TextInputType.text,
               textCapitalization: TextCapitalization.words,
               textInputAction: last ? TextInputAction.done : TextInputAction.next,
-              style: disp(15, w: 600),
+              style: disp(TS.title, w: 600),
               decoration: InputDecoration(
                 hintText: hint,
-                hintStyle: disp(15, w: 500, color: Nv.muted),
+                hintStyle: disp(TS.title, w: 500, color: Nv.muted),
                 counterText: '',
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -374,9 +374,9 @@ class ActionTile extends StatelessWidget {
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(label,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(15, w: 700, color: fg)),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.title, w: 700, color: fg)),
                 ),
-                if (trailing != null) Text(trailing!, style: mono(11)),
+                if (trailing != null) Text(trailing!, style: mono(TS.label)),
               ],
             ),
           ),
@@ -393,7 +393,7 @@ void showToast(BuildContext context, String text) {
   messenger
     ..hideCurrentSnackBar()
     ..showSnackBar(SnackBar(
-      content: Text(text, style: disp(14, w: 700, color: Nv.bg)),
+      content: Text(text, style: disp(TS.body, w: 700, color: Nv.bg)),
       behavior: SnackBarBehavior.floating,
       backgroundColor: Nv.text,
       duration: const Duration(milliseconds: 1800),

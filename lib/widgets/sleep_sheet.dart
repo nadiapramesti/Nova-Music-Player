@@ -43,12 +43,12 @@ void showSleepSheet(BuildContext context) {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('TIMER TIDUR', style: mono(11, spacing: 1.2)),
+                Text('TIMER TIDUR', style: mono(TS.label, spacing: 1.2)),
                 const SizedBox(height: 4),
-                Text('Berhenti otomatis', style: disp(24, spacing: -0.6)),
+                Text('Berhenti otomatis', style: disp(TS.h2, spacing: -0.6)),
                 const SizedBox(height: 6),
                 Text(status,
-                    style: disp(13.5, w: 600, color: t.active ? Nv.accent : Nv.muted, height: 1.35)),
+                    style: disp(TS.body, w: 600, color: t.active ? Nv.accent : Nv.muted, height: 1.35)),
                 const SizedBox(height: 16),
                 GridView.count(
                   crossAxisCount: 3,
@@ -101,8 +101,8 @@ class _Choice extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(big, style: disp(20, spacing: -0.5)),
-            Text(small, style: mono(10.5)),
+            Text(big, style: disp(TS.h3, spacing: -0.5)),
+            Text(small, style: mono(TS.label)),
           ],
         ),
       ),

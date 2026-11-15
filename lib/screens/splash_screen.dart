@@ -103,9 +103,9 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
                         child: Text.rich(
                           TextSpan(children: [
                             const TextSpan(text: 'Musikmu, '),
-                            TextSpan(text: 'tanpa jeda.', style: disp(19, w: 700, color: Nv.accent)),
+                            TextSpan(text: 'tanpa jeda.', style: disp(TS.h3, w: 700, color: Nv.accent)),
                           ]),
-                          style: disp(19, w: 600, color: Nv.text),
+                          style: disp(TS.h3, w: 600, color: Nv.text),
                         ),
                       ),
                     ),

@@ -53,7 +53,7 @@ class NowPlayingScreen extends StatelessWidget {
         valueListenable: audio.current,
         builder: (context, song, _) {
           if (song == null) {
-            return Center(child: Text('Belum ada lagu diputar', style: disp(16, w: 600)));
+            return Center(child: Text('Belum ada lagu diputar', style: disp(TS.lead, w: 600)));
           }
           return Stack(
             children: [
@@ -130,7 +130,7 @@ class _TopBar extends StatelessWidget {
             builder: (context, _) => Column(
               children: [
                 Text('TRACK ${twoDigits(audio.positionInQueue)} DARI ${audio.queue.length}',
-                    style: mono(10.5, spacing: 1.2)),
+                    style: mono(TS.label, spacing: 1.2)),
                 const SizedBox(height: 2),
                 ListenableBuilder(
                   listenable: Listenable.merge([audio.source, audio.sleep.listenable]),
@@ -141,11 +141,11 @@ class _TopBar extends StatelessWidget {
                         left != null ? 'Berhenti dalam ${formatCountdown(left)}' : 'Berhenti di akhir lagu',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: disp(13, w: 700, color: Nv.accent),
+                        style: disp(TS.body, w: 700, color: Nv.accent),
                       );
                     }
                     return Text(audio.source.value,
-                        maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(13, w: 700));
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.body, w: 700));
                   },
                 ),
               ],
@@ -225,7 +225,7 @@ class _Cover extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text('NOVA · ${twoDigits(audio.positionInQueue)}', style: mono(11, spacing: 1.2)),
+                      Text('NOVA · ${twoDigits(audio.positionInQueue)}', style: mono(TS.label, spacing: 1.2)),
                       Text(song.title,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
@@ -273,7 +273,7 @@ class _Panel extends StatelessWidget {
                     Text('${song.artist} — ${song.album}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: disp(14, w: 500, color: Nv.muted)),
+                        style: disp(TS.body, w: 500, color: Nv.muted)),
                   ],
                 ),
               ),
@@ -383,11 +383,11 @@ class _Panel extends StatelessWidget {
                 decoration: BoxDecoration(border: Border(top: BorderSide(color: Nv.rule))),
                 child: Row(
                   children: [
-                    Text('BERIKUTNYA', style: mono(10.5, spacing: 1)),
+                    Text('BERIKUTNYA', style: mono(TS.label, spacing: 1)),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(next?.title ?? 'Akhir antrean',
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(14, w: 700)),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.body, w: 700)),
                     ),
                   ],
                 ),
@@ -486,8 +486,8 @@ class _WaveSeekState extends State<_WaveSeek> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(fmt(shown), style: mono(12, color: Nv.accent)),
-                    Text('−${fmt(total - shown)}', style: mono(12)),
+                    Text(fmt(shown), style: mono(TS.mono, color: Nv.accent)),
+                    Text('−${fmt(total - shown)}', style: mono(TS.mono)),
                   ],
                 ),
               ],

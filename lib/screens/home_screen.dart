@@ -194,7 +194,7 @@ class _ScanButton extends StatelessWidget {
               children: [
                 Icon(Icons.refresh_rounded, size: 17, color: Nv.text),
                 const SizedBox(width: 6),
-                Text('Pindai ulang', style: disp(13, w: 700)),
+                Text('Pindai ulang', style: disp(TS.body, w: 700)),
               ],
             ),
           ),
@@ -230,10 +230,10 @@ class _ResumeCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(isCurrent ? 'SEDANG DIPUTAR' : 'LANJUTKAN',
-                          style: mono(10.5, spacing: 1)),
+                          style: mono(TS.label, spacing: 1)),
                       const SizedBox(height: 3),
                       Text(song.title,
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(16, w: 700)),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.lead, w: 700)),
                       const SizedBox(height: 6),
                       StreamBuilder<Duration>(
                         stream: audio.player.positionStream,

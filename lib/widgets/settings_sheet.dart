@@ -23,9 +23,9 @@ void showSettingsSheet(BuildContext context) {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('PENGATURAN', style: mono(11, spacing: 1.2)),
+              Text('PENGATURAN', style: mono(TS.label, spacing: 1.2)),
               const SizedBox(height: 4),
-              Text('Tampilan', style: disp(24, spacing: -0.6)),
+              Text('Tampilan', style: disp(TS.h2, spacing: -0.6)),
               const SizedBox(height: 14),
               _Toggle(
                 title: 'Warna ikut cover',
@@ -44,7 +44,7 @@ void showSettingsSheet(BuildContext context) {
                 ),
               ],
               const SizedBox(height: 22),
-              Text('Pemutaran', style: disp(24, spacing: -0.6)),
+              Text('Pemutaran', style: disp(TS.h2, spacing: -0.6)),
               const SizedBox(height: 14),
               _Choices(
                 title: 'Transisi halus',
@@ -55,7 +55,7 @@ void showSettingsSheet(BuildContext context) {
                 onSelect: (i) => audio.setFadeSeconds(transitionChoices[i]),
               ),
               const SizedBox(height: 22),
-              Text('Pustaka', style: disp(24, spacing: -0.6)),
+              Text('Pustaka', style: disp(TS.h2, spacing: -0.6)),
               const SizedBox(height: 14),
               ActionTile(
                 icon: Icons.folder_off_outlined,
@@ -64,7 +64,7 @@ void showSettingsSheet(BuildContext context) {
                 onTap: () => showHiddenFoldersSheet(context),
               ),
               const SizedBox(height: 22),
-              Text('Pulau di notch', style: disp(24, spacing: -0.6)),
+              Text('Pulau di notch', style: disp(TS.h2, spacing: -0.6)),
               const SizedBox(height: 14),
               _Toggle(
                 title: 'Tampil di dalam Nova',
@@ -134,9 +134,9 @@ class _Choices extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: disp(15, w: 700)),
+          Text(title, style: disp(TS.title, w: 700)),
           const SizedBox(height: 3),
-          Text(body, style: disp(12.5, w: 500, color: Nv.muted, height: 1.35)),
+          Text(body, style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.35)),
           const SizedBox(height: 12),
           Row(
             children: [
@@ -172,7 +172,7 @@ class _ChoiceButton extends StatelessWidget {
         child: SizedBox(
           height: 40,
           child: Center(
-            child: Text(label, style: disp(13.5, w: 700, color: on ? Nv.onAccent : Nv.text)),
+            child: Text(label, style: disp(TS.body, w: 700, color: on ? Nv.onAccent : Nv.text)),
           ),
         ),
       ),
@@ -204,9 +204,9 @@ class _Toggle extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: disp(15, w: 700)),
+                    Text(title, style: disp(TS.title, w: 700)),
                     const SizedBox(height: 3),
-                    Text(body, style: disp(12.5, w: 500, color: Nv.muted, height: 1.35)),
+                    Text(body, style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.35)),
                   ],
                 ),
               ),
@@ -290,7 +290,7 @@ class _OutsideTesterState extends State<_OutsideTester> with WidgetsBindingObser
                     : granted
                         ? 'Izin tampil di atas aplikasi lain: aktif'
                         : 'Izin tampil di atas aplikasi lain: belum aktif',
-                style: disp(13, w: 600),
+                style: disp(TS.body, w: 600),
               ),
             ),
           ],
@@ -309,14 +309,14 @@ class _OutsideTesterState extends State<_OutsideTester> with WidgetsBindingObser
         WideButton(label: 'Coba pil sekarang', icon: Icons.bolt_rounded, primary: false, onTap: _test),
         if (_msg != null) ...[
           const SizedBox(height: 8),
-          Text(_msg!, style: disp(12.5, w: 600, color: Nv.accent, height: 1.35)),
+          Text(_msg!, style: disp(TS.caption, w: 600, color: Nv.accent, height: 1.35)),
         ],
         const SizedBox(height: 8),
         Text(
           'HP Oppo / Realme / OnePlus: buka Pengaturan › Aplikasi › Nova, aktifkan '
           '"Tampilkan di atas aplikasi lain" / "Jendela mengambang", lalu matikan '
           'optimasi baterai buat Nova.',
-          style: disp(12, w: 500, color: Nv.muted, height: 1.4),
+          style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.4),
         ),
       ],
     );
@@ -334,15 +334,15 @@ void showHiddenFoldersSheet(BuildContext context) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('PUSTAKA', style: mono(11, spacing: 1.2)),
+            Text('PUSTAKA', style: mono(TS.label, spacing: 1.2)),
             const SizedBox(height: 4),
-            Text('Sembunyikan folder', style: disp(24, spacing: -0.6)),
+            Text('Sembunyikan folder', style: disp(TS.h2, spacing: -0.6)),
             const SizedBox(height: 6),
             Text('Lagu di folder yang dicentang gak muncul di Nova. File-nya tetap aman di HP.',
-                style: disp(13, w: 500, color: Nv.muted, height: 1.35)),
+                style: disp(TS.body, w: 500, color: Nv.muted, height: 1.35)),
             const SizedBox(height: 14),
             if (folders.isEmpty)
-              Text('Belum ada lagu yang kebaca.', style: disp(13.5, w: 500, color: Nv.muted))
+              Text('Belum ada lagu yang kebaca.', style: disp(TS.body, w: 500, color: Nv.muted))
             else
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(sheet).size.height * 0.55),
@@ -408,14 +408,14 @@ class _FolderTile extends StatelessWidget {
                       Text(name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: disp(15, w: 700, color: hidden ? Nv.accent : Nv.text)),
+                          style: disp(TS.title, w: 700, color: hidden ? Nv.accent : Nv.text)),
                       Text(short.isEmpty ? '/' : short,
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: mono(10.5, w: 500)),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: mono(TS.label, w: 500)),
                     ],
                   ),
                 ),
                 const SizedBox(width: 10),
-                Text(hidden ? 'DISEMBUNYIKAN' : '$count LAGU', style: mono(10.5, color: hidden ? Nv.accent : null)),
+                Text(hidden ? 'DISEMBUNYIKAN' : '$count LAGU', style: mono(TS.label, color: hidden ? Nv.accent : null)),
               ],
             ),
           ),

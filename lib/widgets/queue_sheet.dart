@@ -86,8 +86,8 @@ class _QueueListState extends State<_QueueList> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Expanded(child: Text('Antrean', style: disp(24, spacing: -0.6))),
-                Text('${upcoming.length} BERIKUTNYA', style: mono(11)),
+                Expanded(child: Text('Antrean', style: disp(TS.h2, spacing: -0.6))),
+                Text('${upcoming.length} BERIKUTNYA', style: mono(TS.label)),
               ],
             ),
           ),
@@ -99,7 +99,7 @@ class _QueueListState extends State<_QueueList> {
               shuffled
                   ? 'Mode acak nyala: swipe ke kiri buat hapus. Matikan acak buat ngatur urutan.'
                   : 'Tahan & geser ≡ buat ngatur urutan, swipe ke kiri buat hapus.',
-              style: disp(12.5, w: 500, color: Nv.muted, height: 1.35),
+              style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.35),
             ),
           ),
         ),
@@ -113,7 +113,7 @@ class _QueueListState extends State<_QueueList> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
               child: Text('Gak ada lagu berikutnya. Tahan lama lagu, lalu pilih "Putar berikutnya".',
-                  style: disp(13.5, w: 500, color: Nv.muted, height: 1.35)),
+                  style: disp(TS.body, w: 500, color: Nv.muted, height: 1.35)),
             ),
           )
         else
@@ -142,7 +142,7 @@ class _QueueListState extends State<_QueueList> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('Hapus', style: disp(13, w: 700, color: Nv.accent)),
+                        Text('Hapus', style: disp(TS.body, w: 700, color: Nv.accent)),
                         const SizedBox(width: 6),
                         Icon(Icons.delete_outline_rounded, color: Nv.accent),
                       ],
@@ -174,7 +174,7 @@ class _QueueListState extends State<_QueueList> {
   Widget _label(String text) => SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
-          child: Text(text, style: mono(10.5, spacing: 1.2)),
+          child: Text(text, style: mono(TS.label, spacing: 1.2)),
         ),
       );
 }
@@ -203,9 +203,9 @@ class _Row extends StatelessWidget {
                   Text(song.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: disp(15, w: 700, color: active ? Nv.accent : Nv.text)),
+                      style: disp(TS.title, w: 700, color: active ? Nv.accent : Nv.text)),
                   Text(song.artist,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(12.5, w: 500, color: Nv.muted)),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.caption, w: 500, color: Nv.muted)),
                 ],
               ),
             ),

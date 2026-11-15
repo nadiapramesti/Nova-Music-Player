@@ -215,7 +215,7 @@ class Pill extends StatelessWidget {
                 Icon(icon, size: 15, color: selected ? Nv.bg : Nv.text),
                 const SizedBox(width: 5),
               ],
-              Text(label, style: disp(12.5, w: 700, color: selected ? Nv.bg : Nv.text)),
+              Text(label, style: disp(TS.caption, w: 700, color: selected ? Nv.bg : Nv.text)),
             ],
           ),
         ),
@@ -258,7 +258,7 @@ class WideButton extends StatelessWidget {
             children: [
               Icon(icon, size: 20, color: primary ? Nv.onAccent : Nv.text),
               const SizedBox(width: 8),
-              Text(label, style: disp(15, w: 800, color: primary ? Nv.onAccent : Nv.text)),
+              Text(label, style: disp(TS.title, w: 800, color: primary ? Nv.onAccent : Nv.text)),
             ],
           ),
         ),
@@ -279,8 +279,8 @@ class SectionHeader extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Expanded(child: Text(title, style: disp(22, spacing: -0.6))),
-          if (trailing != null) Text(trailing!, style: mono(12)),
+          Expanded(child: Text(title, style: disp(TS.h2, spacing: -0.6))),
+          if (trailing != null) Text(trailing!, style: mono(TS.mono)),
         ],
       ),
     );

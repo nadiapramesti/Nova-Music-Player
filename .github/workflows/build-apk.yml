@@ -1,8 +1,11 @@
 name: Build APK
 
+# Push ke main: cuma dicek (analyze + test + build), gak bikin rilis.
+# Tag v* (contoh v1.0.0): bikin rilis "Nova v1.0.0" berisi APK-nya.
 on:
   push:
     branches: [main]
+    tags: ['v*']
   workflow_dispatch:
 
 permissions:
@@ -38,13 +41,22 @@ jobs:
 
       - name: Build APK
         run: |
-          flutter build apk --release
-          cp build/app/outputs/flutter-apk/app-release.apk nova.apk
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+            flutter build apk --release --build-name="$VERSION" --build-number=${{ github.run_number }}
+            cp build/app/outputs/flutter-apk/app-release.apk "Nova-$VERSION.apk"
+          else
+            flutter build apk --release
+          fi
 
       - name: Rilis APK
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Nova build ${{ github.run_number }}
-          body: APK Nova dari commit ${{ github.sha }}. Download nova.apk lalu install di HP.
-          files: nova.apk
+          name: Nova ${{ github.ref_name }}
+          body: |
+            Download **Nova-*.apk** di bawah, lalu buka file-nya di HP buat install.
+
+            Offline, tanpa iklan, tanpa akun.
+          files: Nova-*.apk
+          make_latest: true

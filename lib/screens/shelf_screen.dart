@@ -87,7 +87,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
                       Expanded(child: Text('Rak', style: disp(40, spacing: -1.6))),
                       Padding(
                         padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(countLabel, style: mono(12, w: 500)),
+                        child: Text(countLabel, style: mono(TS.mono, w: 500)),
                       ),
                     ],
                   ),
@@ -162,7 +162,7 @@ class _PlaylistShelf extends StatelessWidget {
             child: Text(
               'Belum ada playlist. Bikin satu, atau tahan lama lagu mana aja lalu pilih "Tambah ke playlist".',
               textAlign: TextAlign.center,
-              style: disp(14, w: 500, color: Nv.muted, height: 1.4),
+              style: disp(TS.body, w: 500, color: Nv.muted, height: 1.4),
             ),
           ),
         for (final (i, p) in items.indexed)
@@ -221,7 +221,7 @@ class _Spine extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
                 children: [
-                  SizedBox(width: 30, child: Text(twoDigits(number), style: mono(11, color: fg))),
+                  SizedBox(width: 30, child: Text(twoDigits(number), style: mono(TS.label, color: fg))),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,16 +229,16 @@ class _Spine extends StatelessWidget {
                         Text(title,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: disp(17, spacing: -0.4, color: fg)),
+                            style: disp(TS.lead, spacing: -0.4, color: fg)),
                         Text(subtitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: disp(12.5, w: 500, color: Nv.muted)),
+                            style: disp(TS.caption, w: 500, color: Nv.muted)),
                       ],
                     ),
                   ),
                   const SizedBox(width: 10),
-                  Text(trailing, style: mono(11.5, color: fg)),
+                  Text(trailing, style: mono(TS.label, color: fg)),
                 ],
               ),
             ),
@@ -259,7 +259,7 @@ class _FavoritesShortcut extends StatelessWidget {
       return Padding(
         padding: const EdgeInsets.fromLTRB(20, 30, 20, 0),
         child: Text('Belum ada favorit. Tekan ikon hati di layar pemutar buat nambahin.',
-            textAlign: TextAlign.center, style: disp(14, w: 500, color: Nv.muted, height: 1.4)),
+            textAlign: TextAlign.center, style: disp(TS.body, w: 500, color: Nv.muted, height: 1.4)),
       );
     }
     return Column(

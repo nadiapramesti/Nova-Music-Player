@@ -132,7 +132,7 @@ class _LyricsViewState extends State<LyricsView> {
         for (final l in data.lines)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Text(l.text, style: disp(19, w: 700, height: 1.35, color: Nv.text)),
+            child: Text(l.text, style: disp(TS.h3, w: 700, height: 1.35, color: Nv.text)),
           ),
         _sourceNote(data),
       ],
@@ -143,7 +143,7 @@ class _LyricsViewState extends State<LyricsView> {
         padding: const EdgeInsets.fromLTRB(6, 18, 6, 0),
         child: Text(
           data.synced ? 'LIRIK SINKRON · ${data.source.toUpperCase()}' : 'LIRIK · ${data.source.toUpperCase()}',
-          style: mono(10, spacing: 1.2),
+          style: mono(TS.monoTiny, spacing: 1.2),
         ),
       );
 }
@@ -200,20 +200,20 @@ class _EmptyState extends State<_Empty> with WidgetsBindingObserver {
           children: [
             Icon(Icons.lyrics_outlined, size: 40, color: Nv.accent),
             const SizedBox(height: 12),
-            Text('Lirik belum ada', style: disp(22, spacing: -0.5)),
+            Text('Lirik belum ada', style: disp(TS.h2, spacing: -0.5)),
             const SizedBox(height: 6),
             Text(
               'Nova baca lirik yang tertanam di file lagu, atau file .lrc dengan nama yang sama '
               'di folder lagunya (contoh: "Senja.mp3" + "Senja.lrc").',
               textAlign: TextAlign.center,
-              style: disp(13.5, w: 500, color: Nv.muted, height: 1.4),
+              style: disp(TS.body, w: 500, color: Nv.muted, height: 1.4),
             ),
             if (_access == false) ...[
               const SizedBox(height: 16),
               Text(
                 'Buat baca file .lrc, Android minta izin "akses semua file".',
                 textAlign: TextAlign.center,
-                style: disp(12.5, w: 600, color: Nv.muted, height: 1.35),
+                style: disp(TS.caption, w: 600, color: Nv.muted, height: 1.35),
               ),
               const SizedBox(height: 10),
               WideButton(

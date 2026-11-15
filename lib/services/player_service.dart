@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:audio_session/audio_session.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
@@ -36,7 +37,11 @@ class PlayerService {
     player.processingStateStream.listen((s) {
       if (s == ProcessingState.completed) sleep.onTrackEnded();
     });
-    player.playingStream.listen((_) => _syncFadeTicker());
+    player.playingStream.listen((playing) {
+      _syncFadeTicker();
+      if (playing && !_wasPlaying) _claimFocus();
+      _wasPlaying = playing;
+    });
     // Ulang 1 lagu cuma buat lagu itu: begitu pindah lagu (next, prev, tap lagu lain,
     // widget, notifikasi), balik ke ulang semua.
     current.addListener(() {
@@ -49,6 +54,19 @@ class PlayerService {
   }
 
   int? _loopSongId;
+  bool _wasPlaying = false;
+
+  /// Minta "giliran bunyi" ke Android tiap mulai muter. Tombol di notifikasi,
+  /// layar kunci, widget, & headset muter langsung tanpa minta giliran, jadi
+  /// Nova gak dikabarin pas app lain (video) mau bunyi: kadang tetap jalan,
+  /// kadang dibisuin sistem padahal statusnya masih "diputar". Ini nutup celah itu.
+  Future<void> _claimFocus() async {
+    if (kDemo) return;
+    try {
+      final session = await AudioSession.instance;
+      if (!await session.setActive(true)) await player.pause();
+    } catch (_) {}
+  }
 
   /// Durasi transisi halus antar lagu dalam detik (0 = mati).
   final ValueNotifier<int> fadeSeconds = ValueNotifier<int>(2);
