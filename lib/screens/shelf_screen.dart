@@ -6,8 +6,9 @@ import '../theme.dart';
 import '../widgets/controls.dart';
 import 'now_playing_screen.dart';
 import 'song_list_screen.dart';
+import '../widgets/song_actions.dart';
 
-enum ShelfTab { album, artis, folder, favorit }
+enum ShelfTab { album, artis, folder, playlist, favorit }
 
 /// "Rak": koleksi dikelompokkan, ditampilkan kayak deretan punggung kaset kaca.
 class ShelfScreen extends StatefulWidget {
@@ -24,6 +25,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
     ShelfTab.album: 'Album',
     ShelfTab.artis: 'Artis',
     ShelfTab.folder: 'Folder',
+    ShelfTab.playlist: 'Playlist',
     ShelfTab.favorit: 'Favorit',
   };
 
@@ -35,6 +37,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
         return library.groupBy((s) => s.artist);
       case ShelfTab.folder:
         return library.groupBy((s) => s.folder);
+      case ShelfTab.playlist:
       case ShelfTab.favorit:
         return const {};
     }
@@ -48,6 +51,7 @@ class _ShelfScreenState extends State<ShelfScreen> {
         return '${songs.map((s) => s.album).toSet().length} album';
       case ShelfTab.folder:
         return songs.first.artist;
+      case ShelfTab.playlist:
       case ShelfTab.favorit:
         return '';
     }
@@ -57,14 +61,16 @@ class _ShelfScreenState extends State<ShelfScreen> {
   Widget build(BuildContext context) {
     final top = MediaQuery.of(context).padding.top;
     return ListenableBuilder(
-      listenable: Listenable.merge([library, stats, audio.current]),
+      listenable: Listenable.merge([library, stats, audio.current, playlists]),
       builder: (context, _) {
         final groups = _groups();
         final favs = stats.favoriteSongs(library.songs);
         final curId = audio.current.value?.id;
-        final countLabel = _tab == ShelfTab.favorit
-            ? '${favs.length} LAGU'
-            : '${groups.length} ${_labels[_tab]!.toUpperCase()}';
+        final countLabel = switch (_tab) {
+          ShelfTab.favorit => '${favs.length} LAGU',
+          ShelfTab.playlist => '${playlists.items.length} PLAYLIST',
+          _ => '${groups.length} ${_labels[_tab]!.toUpperCase()}',
+        };
 
         return Stack(
           children: [
@@ -100,6 +106,8 @@ class _ShelfScreenState extends State<ShelfScreen> {
                 ),
                 if (_tab == ShelfTab.favorit)
                   _FavoritesShortcut(songs: favs)
+                else if (_tab == ShelfTab.playlist)
+                  _PlaylistShelf(currentId: curId)
                 else
                   for (final (i, e) in groups.entries.indexed)
                     Padding(
@@ -124,6 +132,58 @@ class _ShelfScreenState extends State<ShelfScreen> {
         );
       },
     );
+  }
+}
+
+/// Tab Playlist: tombol bikin baru + daftar playlist.
+class _PlaylistShelf extends StatelessWidget {
+  const _PlaylistShelf({required this.currentId});
+  final int? currentId;
+
+  Future<void> _create(BuildContext context) async {
+    final name = await askPlaylistName(context, title: 'Playlist baru');
+    if (name == null || !context.mounted) return;
+    final p = playlists.create(name);
+    if (p != null) SongListScreen.openPlaylist(context, p.id);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = playlists.items;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+          child: WideButton(label: 'Playlist baru', icon: Icons.add_rounded, onTap: () => _create(context)),
+        ),
+        if (items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
+            child: Text(
+              'Belum ada playlist. Bikin satu, atau tahan lama lagu mana aja lalu pilih "Tambah ke playlist".',
+              textAlign: TextAlign.center,
+              style: disp(14, w: 500, color: Nv.muted, height: 1.4),
+            ),
+          ),
+        for (final (i, p) in items.indexed)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: _Spine(
+              number: i + 1,
+              title: p.name,
+              subtitle: _artists(p.id),
+              trailing: '${p.songIds.length} LAGU',
+              active: currentId != null && p.songIds.contains(currentId),
+              onTap: () => SongListScreen.openPlaylist(context, p.id),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _artists(String id) {
+    final names = playlists.songsOf(id, library.songs).map((s) => s.artist).toSet().take(3).toList();
+    return names.isEmpty ? 'Masih kosong' : names.join(', ');
   }
 }
 

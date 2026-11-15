@@ -18,6 +18,7 @@ Future<void> main() async {
     androidNotificationOngoing: true,
   );
   await stats.init();
+  await playlists.init();
   await island.init(audio, stats);
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

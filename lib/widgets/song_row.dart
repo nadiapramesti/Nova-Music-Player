@@ -4,14 +4,24 @@ import '../models.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import 'art.dart';
+import 'song_actions.dart';
 
 /// Satu baris lagu: nomor mono, cover, judul, artis, durasi.
 class SongRow extends StatelessWidget {
-  const SongRow({super.key, required this.song, required this.number, required this.onTap});
+  const SongRow({
+    super.key,
+    required this.song,
+    required this.number,
+    required this.onTap,
+    this.playlistId,
+  });
 
   final Song song;
   final int number;
   final VoidCallback onTap;
+
+  /// Diisi kalau baris ini ada di dalam playlist (buat aksi "Hapus dari playlist ini").
+  final String? playlistId;
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +31,7 @@ class SongRow extends StatelessWidget {
         final on = cur?.id == song.id;
         return InkWell(
           onTap: onTap,
+          onLongPress: () => showSongActions(context, song, playlistId: playlistId),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
             decoration: BoxDecoration(border: Border(top: BorderSide(color: Nv.rule))),
