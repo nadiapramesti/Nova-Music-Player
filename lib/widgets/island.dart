@@ -45,6 +45,7 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
 
   @override
   void dispose() {
+    _autoClose?.cancel();
     _sub?.cancel();
     _eq.dispose();
     super.dispose();
@@ -53,7 +54,21 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
   /// Lagu yang pulaunya disembunyikan (geser ke atas). Muncul lagi pas ganti lagu.
   int? _hiddenFor;
 
-  void _toggle(bool open) => setState(() => _open = open);
+  /// Kartu nyusut sendiri kalau 5 detik gak disentuh.
+  Timer? _autoClose;
+
+  void _armAutoClose() {
+    _autoClose?.cancel();
+    if (!_open) return;
+    _autoClose = Timer(const Duration(seconds: 5), () {
+      if (mounted && _open) _toggle(false);
+    });
+  }
+
+  void _toggle(bool open) {
+    setState(() => _open = open);
+    _armAutoClose();
+  }
 
   void _hide(Song song) => setState(() {
         _open = false;
@@ -142,13 +157,17 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
         tween: Tween(begin: 0, end: 1),
         duration: const Duration(milliseconds: 180),
         builder: (context, v, child) => Opacity(opacity: v, child: child),
-        child: _Expanded(
+        child: Listener(
+          // Disentuh = timer nyusut diulang.
+          onPointerDown: (_) => _armAutoClose(),
+          child: _Expanded(
           song: song,
           eq: _eq,
           onOpenPlayer: () {
             _toggle(false);
             openNowPlaying(context);
           },
+        ),
         ),
       );
     }

@@ -513,6 +513,10 @@ object NovaOverlay {
         }
     }
 
+    /** Kartu pemutar nyusut sendiri jadi kapsul kalau dibiarin. */
+    private const val AUTO_HIDE_MS = 5000L
+    private val autoHide = Runnable { if (mode == Mode.EXPANDED) setMode(Mode.HIDDEN) }
+
     private fun setMode(m: Mode) {
         mode = m
         render()
@@ -529,6 +533,9 @@ object NovaOverlay {
         val frame = root ?: return
         val p = params ?: return
         frame.removeAllViews()
+        // Tiap kartu dibangun ulang (buka / tombol ditekan / ganti lagu), timer diulang.
+        main.removeCallbacks(autoHide)
+        if (mode == Mode.EXPANDED) main.postDelayed(autoHide, AUTO_HIDE_MS)
         val statusH = statusBarHeight(c)
         val screenW = c.resources.displayMetrics.widthPixels
 
