@@ -10,6 +10,7 @@ import '../widgets/art.dart';
 import '../services/sleep_timer.dart';
 import '../widgets/controls.dart';
 import '../widgets/deck.dart' show novaArtHero;
+import '../widgets/queue_sheet.dart';
 import '../widgets/sleep_sheet.dart';
 
 /// Putar dari daftar lalu langsung buka layar Sedang diputar.
@@ -141,7 +142,7 @@ class _TopBar extends StatelessWidget {
         GlassCircleButton(
           icon: Icons.queue_music_rounded,
           label: 'Lihat antrean',
-          onTap: () => _showQueue(context),
+          onTap: () => showQueueSheet(context),
         ),
       ],
     );
@@ -463,75 +464,4 @@ class _WaveSeekState extends State<_WaveSeek> {
       },
     );
   }
-}
-
-void _showQueue(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    builder: (context) {
-      final order = audio.player.effectiveIndices ?? List.generate(audio.queue.length, (i) => i);
-      final cur = audio.player.currentIndex;
-      final start = cur == null ? 0 : max(0, order.indexOf(cur));
-      return DraggableScrollableSheet(
-        initialChildSize: 0.6,
-        maxChildSize: 0.92,
-        expand: false,
-        builder: (context, controller) => Padding(
-          padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-          child: Glass(
-            strong: true,
-            radius: 28,
-            child: ListView.builder(
-              controller: controller,
-              padding: const EdgeInsets.only(top: 18, bottom: 24),
-              itemCount: order.length - start + 1,
-              itemBuilder: (context, i) {
-                if (i == 0) {
-                  return Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-                    child: Text('Antrean', style: disp(24, spacing: -0.6)),
-                  );
-                }
-                final qi = order[start + i - 1];
-                final s = audio.queue[qi];
-                final on = qi == cur;
-                return InkWell(
-                  onTap: () {
-                    audio.player.seek(Duration.zero, index: qi);
-                    Navigator.of(context).pop();
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                    child: Row(
-                      children: [
-                        Art(songId: s.id, size: 40, radius: 9),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(s.title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: disp(15, w: 700, color: on ? Nv.accent : Nv.text)),
-                              Text(s.artist,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: disp(12.5, w: 500, color: Nv.muted)),
-                            ],
-                          ),
-                        ),
-                        if (on) Icon(Icons.graphic_eq_rounded, color: Nv.accent, size: 20),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      );
-    },
-  );
 }

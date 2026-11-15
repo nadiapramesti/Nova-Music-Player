@@ -60,6 +60,24 @@ void showSongActions(BuildContext context, Song song, {String? playlistId}) {
             ),
             const SizedBox(height: 16),
             ActionTile(
+              icon: Icons.queue_play_next_rounded,
+              label: 'Putar berikutnya',
+              onTap: () {
+                Navigator.of(sheet).pop();
+                audio.playNext(song);
+                showToast(context, 'Diputar setelah lagu ini');
+              },
+            ),
+            ActionTile(
+              icon: Icons.add_to_queue_rounded,
+              label: 'Tambah ke antrean',
+              onTap: () {
+                Navigator.of(sheet).pop();
+                audio.addToQueue(song);
+                showToast(context, 'Masuk ke akhir antrean');
+              },
+            ),
+            ActionTile(
               icon: Icons.playlist_add_rounded,
               label: 'Tambah ke playlist',
               onTap: () {
@@ -249,4 +267,20 @@ class ActionTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Notifikasi singkat melayang di atas dek bawah.
+void showToast(BuildContext context, String text) {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  if (messenger == null) return;
+  messenger
+    ..hideCurrentSnackBar()
+    ..showSnackBar(SnackBar(
+      content: Text(text, style: disp(14, w: 700, color: Nv.bg)),
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: Nv.text,
+      duration: const Duration(milliseconds: 1800),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 150),
+    ));
 }

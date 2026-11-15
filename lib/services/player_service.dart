@@ -7,6 +7,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import '../demo/demo.dart';
 import '../demo/silent_source.dart';
 import '../models.dart';
+import 'nova_shuffle.dart';
 import 'sleep_timer.dart';
 import 'stats_service.dart';
 
@@ -14,6 +15,7 @@ class PlayerService {
   PlayerService(this._stats) {
     player.currentIndexStream.listen((i) {
       if (i == null || i < 0 || i >= _queue.length) return;
+      _cur = i;
       final s = _queue[i];
       current.value = s;
       if (_lastMarked != s.id) {
@@ -41,10 +43,33 @@ class PlayerService {
   /// Asal antrean, misal "Daftar putar · Terbaru" atau nama album.
   final ValueNotifier<String> source = ValueNotifier<String>('Daftar putar');
 
-  List<Song> _queue = const [];
+  /// Urutan sumber antrean (sejajar sama [_source]). Diubah lewat playNext/addToQueue/move/removeAt.
+  List<Song> _queue = [];
+  ConcatenatingAudioSource? _source;
+  NovaShuffleOrder? _shuffle;
   int? _lastMarked;
 
-  List<Song> get queue => _queue;
+  /// Indeks sumber lagu sekarang, dicatat sendiri & disesuaikan langsung saat antrean
+  /// diubah (player baru ngabarin setelah jeda async).
+  int? _cur;
+
+  int? get currentSourceIndex => _cur;
+
+  /// Urutan main (indeks sumber): urutan acak kalau mode acak nyala.
+  List<int> get playOrder {
+    final shuffle = _shuffle;
+    if (player.shuffleModeEnabled && shuffle != null && shuffle.indices.length == _queue.length) {
+      return List.of(shuffle.indices);
+    }
+    return List.generate(_queue.length, (i) => i);
+  }
+
+  /// Naik tiap isi/urutan antrean berubah (buat lembar Antrean).
+  final ValueNotifier<int> queueVersion = ValueNotifier<int>(0);
+
+  List<Song> get queue => List.unmodifiable(_queue);
+
+  void _queueChanged() => queueVersion.value++;
 
   AudioSource _toSource(Song s) {
     final tag = MediaItem(
@@ -61,14 +86,17 @@ class PlayerService {
 
   Future<void> playQueue(List<Song> songs, int index, {String? from, Duration startAt = Duration.zero}) async {
     if (songs.isEmpty) return;
-    _queue = List.unmodifiable(songs);
+    _queue = List.of(songs);
+    _cur = index;
     if (from != null) source.value = from;
     current.value = songs[index];
-    await player.setAudioSource(
-      ConcatenatingAudioSource(children: songs.map(_toSource).toList()),
-      initialIndex: index,
-      initialPosition: startAt,
+    _shuffle = NovaShuffleOrder();
+    _source = ConcatenatingAudioSource(
+      children: songs.map(_toSource).toList(),
+      shuffleOrder: _shuffle,
     );
+    _queueChanged();
+    await player.setAudioSource(_source!, initialIndex: index, initialPosition: startAt);
     // Gak di-await: future play() baru selesai pas lagu berhenti.
     player.play();
   }
@@ -78,6 +106,73 @@ class PlayerService {
     await player.setShuffleModeEnabled(true);
     await playQueue(songs, Random().nextInt(songs.length), from: from);
     await player.shuffle();
+  }
+
+  /// Selipin lagu tepat setelah lagu yang lagi diputar (juga saat mode acak).
+  Future<void> playNext(Song song) async {
+    final src = _source;
+    final cur = _cur;
+    if (src == null || cur == null || _queue.isEmpty) {
+      await playQueue([song], 0, from: 'Antrean');
+      return;
+    }
+    final at = cur + 1;
+    _shuffle
+      ?..currentIndex = cur
+      ..hint = InsertHint.afterCurrent;
+    _queue.insert(at, song);
+    final pending = src.insert(at, _toSource(song));
+    _queueChanged();
+    await pending;
+  }
+
+  /// Tambah lagu di paling akhir antrean.
+  Future<void> addToQueue(Song song) async {
+    final src = _source;
+    if (src == null || _queue.isEmpty) {
+      await playQueue([song], 0, from: 'Antrean');
+      return;
+    }
+    _shuffle?.hint = InsertHint.end;
+    _queue.add(song);
+    final pending = src.add(_toSource(song));
+    _queueChanged();
+    await pending;
+  }
+
+  /// Hapus lagu dari antrean (bukan yang lagi diputar). [index] = indeks sumber.
+  Future<void> removeAt(int index) async {
+    final src = _source;
+    final cur = _cur;
+    if (src == null || index < 0 || index >= _queue.length || index == cur) return;
+    _queue.removeAt(index);
+    if (cur != null && index < cur) _cur = cur - 1;
+    // Langsung kabarin UI (sinkron) biar baris yang di-swipe hilang di frame yang sama.
+    final pending = src.removeAt(index);
+    _queueChanged();
+    await pending;
+  }
+
+  /// Pindah urutan (indeks sumber). Dipakai saat mode acak mati.
+  Future<void> move(int from, int to) async {
+    final src = _source;
+    if (src == null || from == to) return;
+    if (from < 0 || to < 0 || from >= _queue.length || to >= _queue.length) return;
+    final song = _queue.removeAt(from);
+    _queue.insert(to, song);
+    final cur = _cur;
+    if (cur != null) {
+      if (from == cur) {
+        _cur = to;
+      } else if (from < cur && to >= cur) {
+        _cur = cur - 1;
+      } else if (from > cur && to <= cur) {
+        _cur = cur + 1;
+      }
+    }
+    final pending = src.move(from, to);
+    _queueChanged();
+    await pending;
   }
 
   void togglePlay() => player.playing ? player.pause() : player.play();
