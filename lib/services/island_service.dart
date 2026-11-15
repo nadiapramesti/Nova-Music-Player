@@ -59,6 +59,12 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
+  /// Buka halaman izin "tampil di atas app lain"; dicek lagi pas balik ke Nova.
+  Future<void> requestPermission() async {
+    _waitingPermission = true;
+    await _send('requestPermission', null);
+  }
+
   void setInApp(bool v) {
     inApp = v;
     _p?.setBool('islandInApp', v);

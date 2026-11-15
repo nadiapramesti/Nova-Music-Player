@@ -103,14 +103,26 @@ class _OutsideTester extends StatefulWidget {
   State<_OutsideTester> createState() => _OutsideTesterState();
 }
 
-class _OutsideTesterState extends State<_OutsideTester> {
+class _OutsideTesterState extends State<_OutsideTester> with WidgetsBindingObserver {
   String? _msg;
   bool? _granted;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _check();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _check();
   }
 
   Future<void> _check() async {
@@ -152,6 +164,16 @@ class _OutsideTesterState extends State<_OutsideTester> {
           ],
         ),
         const SizedBox(height: 10),
+        if (granted == false) ...[
+          WideButton(
+            label: 'Buka halaman izin',
+            icon: Icons.open_in_new_rounded,
+            onTap: () async {
+              await island.requestPermission();
+            },
+          ),
+          const SizedBox(height: 8),
+        ],
         WideButton(label: 'Coba pil sekarang', icon: Icons.bolt_rounded, primary: false, onTap: _test),
         if (_msg != null) ...[
           const SizedBox(height: 8),
