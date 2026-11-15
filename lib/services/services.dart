@@ -12,6 +12,7 @@ export 'library_service.dart';
 export 'player_service.dart';
 export 'playlist_service.dart';
 export 'stats_service.dart';
+export 'song_edits.dart';
 export 'transition.dart';
 
 // Top-level final di Dart itu lazy: baru dibuat pas pertama dipakai,

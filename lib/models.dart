@@ -25,6 +25,18 @@ class Song {
 
   Duration get duration => Duration(milliseconds: durationMs);
 
+  Song copyWith({String? title, String? artist, String? album}) => Song(
+        id: id,
+        title: title ?? this.title,
+        artist: artist ?? this.artist,
+        album: album ?? this.album,
+        albumId: albumId,
+        durationMs: durationMs,
+        dateAdded: dateAdded,
+        path: path,
+        uri: uri,
+      );
+
   /// Path folder lengkap (buat bedain dua folder yang namanya sama).
   String get folderPath {
     final i = path.lastIndexOf('/');

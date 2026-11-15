@@ -116,6 +116,19 @@ class PlayerService {
 
   void _queueChanged() => queueVersion.value++;
 
+  /// Info lagu diubah di Nova: perbarui salinan di antrean & lagu yang lagi diputar.
+  void refreshSong(Song updated) {
+    var changed = false;
+    for (var i = 0; i < _queue.length; i++) {
+      if (_queue[i].id == updated.id) {
+        _queue[i] = updated;
+        changed = true;
+      }
+    }
+    if (current.value?.id == updated.id) current.value = updated;
+    if (changed) _queueChanged();
+  }
+
   AudioSource _toSource(Song s) {
     final tag = MediaItem(
       id: '${s.id}',

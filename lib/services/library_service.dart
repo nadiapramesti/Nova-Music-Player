@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../demo/demo.dart';
 import '../demo/demo_data.dart';
 import '../models.dart';
+import 'song_edits.dart';
 
 enum LibraryStatus { loading, needPermission, ready, error }
 
@@ -25,6 +26,41 @@ class LibraryService extends ChangeNotifier {
   /// Path folder yang disembunyikan.
   Set<String> hiddenFolders = {};
   SharedPreferences? _p;
+
+  /// Hasil pindai asli (sebelum info diubah di Nova).
+  List<Song> _scanned = const [];
+
+  /// Info lagu yang diubah di Nova (per id lagu).
+  Map<int, SongEdit> edits = {};
+
+  Song? originalOf(int id) {
+    for (final s in _scanned) {
+      if (s.id == id) return s;
+    }
+    return null;
+  }
+
+  /// Simpan/hapus perubahan info satu lagu. Balikin lagu versi barunya.
+  Future<Song?> editSong(int id, SongEdit edit) async {
+    final next = Map.of(edits);
+    if (edit.isEmpty) {
+      next.remove(id);
+    } else {
+      next[id] = edit;
+    }
+    edits = next;
+    allSongs = applyEdits(_scanned, edits);
+    _applyHidden();
+    notifyListeners();
+    if (!kDemo) {
+      _p ??= await SharedPreferences.getInstance();
+      await _p!.setString('songEdits', encodeEdits(edits));
+    }
+    for (final s in allSongs) {
+      if (s.id == id) return s;
+    }
+    return null;
+  }
 
   void _applyHidden() => songs = withoutHiddenFolders(allSongs, hiddenFolders);
 
@@ -53,7 +89,8 @@ class LibraryService extends ChangeNotifier {
     notifyListeners();
     if (kDemo) {
       // Mode demo: lagu rekaan, tanpa izin & tanpa baca file di HP.
-      allSongs = demoSongs();
+      _scanned = demoSongs();
+      allSongs = applyEdits(_scanned, edits);
       _applyHidden();
       status = LibraryStatus.ready;
       notifyListeners();
@@ -67,12 +104,14 @@ class LibraryService extends ChangeNotifier {
       }
       _p ??= await SharedPreferences.getInstance();
       hiddenFolders = (_p!.getStringList('hiddenFolders') ?? const []).toSet();
+      edits = decodeEdits(_p!.getString('songEdits'));
       final raw = await _ch.invokeListMethod<Map<Object?, Object?>>('songs') ?? const [];
-      allSongs = raw
+      _scanned = raw
           .map((m) => Song.fromMap(m.map((k, v) => MapEntry(k.toString(), v))))
           // Buang suara < 30 detik (nada dering, voice note, dll).
           .where((s) => s.durationMs >= 30000)
           .toList();
+      allSongs = applyEdits(_scanned, edits);
       _applyHidden();
       status = LibraryStatus.ready;
     } catch (e) {
