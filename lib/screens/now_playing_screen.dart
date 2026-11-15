@@ -7,8 +7,10 @@ import '../models.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import '../widgets/art.dart';
+import '../services/sleep_timer.dart';
 import '../widgets/controls.dart';
 import '../widgets/deck.dart' show novaArtHero;
+import '../widgets/sleep_sheet.dart';
 
 /// Putar dari daftar lalu langsung buka layar Sedang diputar.
 void playAndOpen(BuildContext context, List<Song> songs, int index, {String? from}) {
@@ -86,6 +88,8 @@ class _TopBar extends StatelessWidget {
           label: 'Tutup',
           onTap: () => Navigator.of(context).pop(),
         ),
+        // Penyeimbang tombol timer tidur di kanan, biar judul tetap di tengah.
+        const SizedBox(width: 52),
         Expanded(
           child: StreamBuilder<int?>(
             stream: audio.player.currentIndexStream,
@@ -94,15 +98,46 @@ class _TopBar extends StatelessWidget {
                 Text('TRACK ${twoDigits(audio.positionInQueue)} DARI ${audio.queue.length}',
                     style: mono(10.5, spacing: 1.2)),
                 const SizedBox(height: 2),
-                ValueListenableBuilder<String>(
-                  valueListenable: audio.source,
-                  builder: (context, src, _) => Text(src,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(13, w: 700)),
+                ListenableBuilder(
+                  listenable: Listenable.merge([audio.source, audio.sleep.listenable]),
+                  builder: (context, _) {
+                    final left = audio.sleep.left.value;
+                    if (left != null || audio.sleep.endOfTrack.value) {
+                      return Text(
+                        left != null ? 'Berhenti dalam ${formatCountdown(left)}' : 'Berhenti di akhir lagu',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: disp(13, w: 700, color: Nv.accent),
+                      );
+                    }
+                    return Text(audio.source.value,
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(13, w: 700));
+                  },
                 ),
               ],
             ),
           ),
         ),
+        ListenableBuilder(
+          listenable: audio.sleep.listenable,
+          builder: (context, _) => audio.sleep.active
+              ? RoundButton(
+                  icon: Icons.bedtime_rounded,
+                  label: 'Timer tidur aktif',
+                  size: 44,
+                  iconSize: 20,
+                  fill: Nv.accentSoft,
+                  fg: Nv.accent,
+                  border: Nv.accent,
+                  onTap: () => showSleepSheet(context),
+                )
+              : GlassCircleButton(
+                  icon: Icons.bedtime_outlined,
+                  label: 'Timer tidur',
+                  onTap: () => showSleepSheet(context),
+                ),
+        ),
+        const SizedBox(width: 8),
         GlassCircleButton(
           icon: Icons.queue_music_rounded,
           label: 'Lihat antrean',

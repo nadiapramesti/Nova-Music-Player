@@ -7,6 +7,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import '../demo/demo.dart';
 import '../demo/silent_source.dart';
 import '../models.dart';
+import 'sleep_timer.dart';
 import 'stats_service.dart';
 
 class PlayerService {
@@ -20,12 +21,22 @@ class PlayerService {
         _stats.played(s.id);
       }
     });
+    // Timer tidur "akhir lagu": lagu pindah sendiri ke berikutnya, atau antrean habis.
+    player.positionDiscontinuityStream.listen((d) {
+      if (d.reason == PositionDiscontinuityReason.autoAdvance) sleep.onTrackEnded();
+    });
+    player.processingStateStream.listen((s) {
+      if (s == ProcessingState.completed) sleep.onTrackEnded();
+    });
   }
 
   final StatsService _stats;
   final AudioPlayer player = AudioPlayer();
 
   final ValueNotifier<Song?> current = ValueNotifier<Song?>(null);
+
+  /// Timer tidur (berhenti otomatis).
+  late final SleepTimer sleep = SleepTimer(pause: player.pause, setVolume: player.setVolume);
 
   /// Asal antrean, misal "Daftar putar · Terbaru" atau nama album.
   final ValueNotifier<String> source = ValueNotifier<String>('Daftar putar');
