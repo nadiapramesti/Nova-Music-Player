@@ -615,7 +615,8 @@ object NovaOverlay {
             // Kartu pemutar ngambang di bawah status bar.
             Mode.EXPANDED -> {
                 p.width = screenW - dp(20f)
-                p.height = WindowManager.LayoutParams.WRAP_CONTENT
+                // Tinggi pasti: latar blur pakai MATCH_PARENT, kalau WRAP_CONTENT kartunya jadi satu layar.
+                p.height = dp(160f)
                 p.y = statusH + dp(8f)
                 expandedView(c)
             }
@@ -624,8 +625,7 @@ object NovaOverlay {
             child,
             FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
-                if (mode == Mode.EXPANDED) FrameLayout.LayoutParams.WRAP_CONTENT
-                else FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
             ),
         )
         try {
@@ -794,7 +794,8 @@ object NovaOverlay {
 
         addView(LinearLayout(c).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14f), dp(14f), dp(14f), dp(14f))
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(14f), dp(12f), dp(14f), dp(12f))
 
             addView(LinearLayout(c).apply {
                 orientation = LinearLayout.HORIZONTAL
