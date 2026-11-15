@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:nova/main.dart' as app;
+import 'package:nova/services/services.dart';
 import 'package:nova/theme.dart';
 
 void main() {
@@ -22,8 +23,12 @@ void main() {
     // 1) Pustaka lagu
     await binding.takeScreenshot('1-pustaka-lagu');
 
-    // 2) Pemutar, tema gelap: tap pemutar mini (judul lagu paling bawah = di dek).
-    await tester.tap(find.text('Teh Jam Dua Pagi').last);
+    // 2) Pemutar, tema gelap: tap cover di pemutar mini (satu-satunya Hero di layar utama).
+    if (audio.current.value == null) {
+      await audio.playQueue(library.songs, 2, from: 'Daftar putar · Terbaru');
+      await _wait(tester, 2);
+    }
+    await tester.tap(find.byType(Hero).first);
     await _wait(tester, 2);
     await binding.takeScreenshot('2-pemutar-gelap');
 
