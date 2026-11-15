@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
@@ -12,6 +13,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Notifikasi + kontrol di lockscreen; lagu tetap jalan pas layar mati.
+  // Sesi audio "musik": kayak app musik lain, Nova minggir kalau app lain bunyi
+  // (video TikTok/SW WA → jeda; telepon → jeda lalu lanjut sendiri; notifikasi →
+  // suara dikecilin sebentar; headset dicabut → jeda).
+  final session = await AudioSession.instance;
+  await session.configure(const AudioSessionConfiguration.music());
+
   await JustAudioBackground.init(
     androidNotificationChannelId: 'com.nadia.nova.audio',
     androidNotificationChannelName: 'Pemutar Nova',

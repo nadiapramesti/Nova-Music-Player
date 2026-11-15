@@ -36,7 +36,18 @@ class PlayerService {
       if (s == ProcessingState.completed) sleep.onTrackEnded();
     });
     player.playingStream.listen((_) => _syncFadeTicker());
+    // Ulang 1 lagu cuma buat lagu itu: begitu pindah lagu (next, prev, tap lagu lain,
+    // widget, notifikasi), balik ke ulang semua.
+    current.addListener(() {
+      final id = current.value?.id;
+      if (id == _loopSongId) return;
+      final had = _loopSongId != null;
+      _loopSongId = id;
+      if (had && player.loopMode == LoopMode.one) player.setLoopMode(LoopMode.all);
+    });
   }
+
+  int? _loopSongId;
 
   /// Durasi transisi halus antar lagu dalam detik (0 = mati).
   final ValueNotifier<int> fadeSeconds = ValueNotifier<int>(2);
