@@ -132,8 +132,6 @@ class _HomeScreenState extends State<HomeScreen> {
                       Text('${songs.length} lagu.', style: disp(40, height: 0.98, spacing: -1.6)),
                       Text('Semuanya punya lu.',
                           style: disp(40, height: 0.98, spacing: -1.6, color: Nv.accent)),
-                      const SizedBox(height: 10),
-                      Text('OFFLINE · 0 IKLAN · 0 AKUN', style: mono(12, w: 500)),
                     ],
                   ),
                 ),
