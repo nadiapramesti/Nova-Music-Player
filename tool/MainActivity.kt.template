@@ -375,20 +375,22 @@ object NovaOverlay {
         val child = root?.getChildAt(0)
         if (child == null) {
             gone = true
-            refresh()
+            render()
         } else {
             child.animate().alpha(0f).translationY(-dp(24f).toFloat()).scaleX(0.6f).setDuration(220)
                 .withEndAction {
                     gone = true
-                    refresh()
+                    render()
                 }.start()
         }
     }
 
     /** Munculin kapsul lagi (ganti lagu / play-jeda / keluar dari Nova). */
     private fun wake() {
+        val wasGone = gone
         gone = false
         main.removeCallbacks(goneRunnable)
+        if (wasGone) render()
     }
 
     fun setAppVisible(visible: Boolean) {
@@ -426,8 +428,7 @@ object NovaOverlay {
     fun refresh(): String? {
         val c = ctx ?: return null
         val testing = System.currentTimeMillis() < testUntil
-        val show = (enabled || testing) && (!appVisible || testing || host != null) && songId >= 0 &&
-            !(gone && !testing) && canDraw(c)
+        val show = (enabled || testing) && (!appVisible || testing || host != null) && songId >= 0 && canDraw(c)
         return if (show) attach(c) else {
             detach()
             null
@@ -468,6 +469,11 @@ object NovaOverlay {
             override fun onDown(e: MotionEvent): Boolean = true
 
             override fun onSingleTapUp(e: MotionEvent): Boolean {
+                // Pegangan kaca di-tap: munculin kapsulnya lagi.
+                if (gone) {
+                    wake()
+                    return true
+                }
                 setMode(if (mode == Mode.HIDDEN) Mode.EXPANDED else Mode.HIDDEN)
                 return true
             }
@@ -570,9 +576,26 @@ object NovaOverlay {
         main.removeCallbacks(autoHide)
         main.removeCallbacks(goneRunnable)
         if (mode == Mode.EXPANDED) main.postDelayed(autoHide, AUTO_HIDE_MS)
-        if (mode == Mode.HIDDEN && autoHideEnabled) main.postDelayed(goneRunnable, GONE_MS)
+        if (mode == Mode.HIDDEN && autoHideEnabled && !gone) main.postDelayed(goneRunnable, GONE_MS)
         val statusH = statusBarHeight(c)
         val screenW = c.resources.displayMetrics.widthPixels
+
+        // Lagi ngumpet: sisain pegangan kaca kecil tepat di bawah status bar buat di-tap.
+        if (gone && mode == Mode.HIDDEN) {
+            p.width = dp(76f)
+            p.height = dp(26f)
+            p.y = statusH + dp(2f)
+            val handle = handleView(c)
+            frame.addView(handle, FrameLayout.LayoutParams(dp(52f), dp(10f), Gravity.CENTER))
+            try {
+                (attachedWm ?: wm(c)).updateViewLayout(frame, p)
+            } catch (e: Exception) {
+                // abaikan
+            }
+            handle.alpha = 0f
+            handle.animate().alpha(1f).setDuration(200).start()
+            return
+        }
 
         val child: View = when (mode) {
             // Mode Aksesibilitas: pil tipis pas di lubang kamera (cover kiri, equalizer kanan,
@@ -803,6 +826,16 @@ object NovaOverlay {
             LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
                 .apply { topMargin = dp(14f) },
         )
+    }
+
+    /** Pegangan kaca: kapsul tipis bening berbingkai, area tap-nya lebih besar dari tampilannya. */
+    private fun handleView(c: Context): View = View(c).apply {
+        background = GradientDrawable().apply {
+            setColor(Color.argb(70, 255, 255, 255))
+            cornerRadius = dp(5f).toFloat()
+            setStroke(dp(1f), Color.argb(120, 255, 255, 255))
+        }
+        contentDescription = "Nova: munculin pulau lagu"
     }
 
     private fun space(c: Context, w: Float) = View(c).apply {

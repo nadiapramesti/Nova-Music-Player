@@ -147,7 +147,42 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
               top: _open ? top + 8 : y,
               left: 0,
               right: 0,
-              // Sembunyi otomatis: naik + pudar ke balik status bar.
+              // Lagi ngumpet: pegangan kaca kecil di bawah status bar, tap = muncul lagi.
+            Positioned(
+              top: top + 2,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: IgnorePointer(
+                  ignoring: !_gone,
+                  child: AnimatedOpacity(
+                    opacity: _gone ? 1 : 0,
+                    duration: const Duration(milliseconds: 220),
+                    child: Semantics(
+                      button: true,
+                      label: 'Munculin pulau lagu',
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: _wake,
+                        child: SizedBox(
+                          width: 76,
+                          height: 26,
+                          child: Center(
+                            child: Glass(
+                              radius: 5,
+                              color: const Color(0x47FFFFFF),
+                              borderColor: const Color(0x78FFFFFF),
+                              child: const SizedBox(width: 52, height: 10),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            // Sembunyi otomatis: naik + pudar ke balik status bar.
               child: IgnorePointer(
                 ignoring: _gone,
                 child: AnimatedSlide(
