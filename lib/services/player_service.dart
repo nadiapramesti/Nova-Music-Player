@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
@@ -59,6 +60,51 @@ class PlayerService {
     final v = p.getInt('fadeSeconds') ?? 2;
     fadeSeconds.value = transitionChoices.contains(v) ? v : 2;
     _syncFadeTicker();
+    await _listenFocus();
+  }
+
+  Timer? _duckTimer;
+  bool _pausedByOther = false;
+
+  /// Kayak app musik lain: app lain bunyi → Nova minggir.
+  /// - Bunyi sebentar (notifikasi): cukup dikecilin sistem, gak dijeda.
+  /// - Bunyi lama walau "minta dikecilin" (video SW WA, IG): dijeda setelah 1,5 detik,
+  ///   lanjut sendiri pas videonya ditutup.
+  /// - Telepon: jeda, lanjut sendiri pas selesai.
+  /// - App lain ambil alih total (TikTok, YouTube): jeda, gak lanjut sendiri.
+  /// - Headset dicabut: jeda.
+  Future<void> _listenFocus() async {
+    final session = await AudioSession.instance;
+    session.becomingNoisyEventStream.listen((_) => player.pause());
+    session.interruptionEventStream.listen((e) {
+      if (e.begin) {
+        _duckTimer?.cancel();
+        switch (e.type) {
+          case AudioInterruptionType.duck:
+            _duckTimer = Timer(const Duration(milliseconds: 1500), () {
+              if (player.playing) {
+                _pausedByOther = true;
+                player.pause();
+              }
+            });
+          case AudioInterruptionType.pause:
+            if (player.playing) {
+              _pausedByOther = true;
+              player.pause();
+            }
+          case AudioInterruptionType.unknown:
+            _pausedByOther = false;
+            if (player.playing) player.pause();
+        }
+      } else {
+        _duckTimer?.cancel();
+        _duckTimer = null;
+        if (e.type != AudioInterruptionType.unknown && _pausedByOther && !player.playing) {
+          player.play();
+        }
+        _pausedByOther = false;
+      }
+    });
   }
 
   Future<void> setFadeSeconds(int v) async {
@@ -89,7 +135,9 @@ class PlayerService {
   }
 
   final StatsService _stats;
-  final AudioPlayer player = AudioPlayer();
+  // Gangguan dari app lain diurus sendiri di [_listenFocus] (bawaan just_audio
+  // cuma ngecilin suara kalau app lain minta "duck", kayak SW WA).
+  final AudioPlayer player = AudioPlayer(handleInterruptions: false);
 
   final ValueNotifier<Song?> current = ValueNotifier<Song?>(null);
 
