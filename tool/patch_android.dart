@@ -211,6 +211,216 @@ void patchNetworkConfig(String manifestPath) {
   stdout.writeln('+ HTTP lokal (127.0.0.1) buat audio mode demo');
 }
 
+// ---- Widget layar utama: cover + judul + tombol putar ----
+const _widgetReceiver = '''
+        <receiver
+            android:name=".NovaWidget"
+            android:label="Nova"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/nova_widget_info"/>
+        </receiver>
+''';
+
+const _widgetInfo = '''<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="64dp"
+    android:minResizeWidth="200dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="1"
+    android:resizeMode="horizontal"
+    android:widgetCategory="home_screen"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/nova_widget"
+    android:previewLayout="@layout/nova_widget"
+    android:description="@string/nova_widget_desc"/>
+''';
+
+const _widgetLayout = '''<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/nova_widget_bg"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingStart="10dp"
+    android:paddingTop="8dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="8dp">
+
+    <ImageView
+        android:id="@+id/w_cover"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
+        android:contentDescription="Buka Nova"
+        android:scaleType="centerCrop"
+        android:src="@drawable/nova_widget_cover"/>
+
+    <LinearLayout
+        android:id="@+id/w_info"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="12dp"
+        android:layout_marginEnd="4dp"
+        android:layout_weight="1"
+        android:gravity="center_vertical"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/w_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:letterSpacing="0.14"
+            android:maxLines="1"
+            android:text="NOVA"
+            android:textColor="#AEB9FF"
+            android:textSize="9sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/w_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="2dp"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Musikmu, tanpa jeda."
+            android:textColor="#ECEEF5"
+            android:textSize="15sp"
+            android:textStyle="bold"/>
+
+        <TextView
+            android:id="@+id/w_artist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Tap buat buka Nova"
+            android:textColor="#8F95A8"
+            android:textSize="12sp"/>
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/w_prev"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:background="@drawable/nova_widget_btn"
+        android:contentDescription="Lagu sebelumnya"
+        android:padding="9dp"
+        android:src="@drawable/nova_widget_prev"/>
+
+    <ImageView
+        android:id="@+id/w_play"
+        android:layout_width="46dp"
+        android:layout_height="46dp"
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="6dp"
+        android:contentDescription="Putar"
+        android:src="@drawable/nova_widget_play"/>
+
+    <ImageView
+        android:id="@+id/w_next"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:background="@drawable/nova_widget_btn"
+        android:contentDescription="Lagu berikutnya"
+        android:padding="9dp"
+        android:src="@drawable/nova_widget_next"/>
+</LinearLayout>
+''';
+
+const _widgetBg = '''<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#EB12141C"/>
+    <stroke android:width="1dp" android:color="#24FFFFFF"/>
+    <corners android:radius="26dp"/>
+</shape>
+''';
+
+const _widgetBtn = '''<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#14FFFFFF"/>
+    <stroke android:width="1dp" android:color="#21FFFFFF"/>
+</shape>
+''';
+
+const _widgetCover = '''<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="315" android:startColor="#3C4479" android:endColor="#141622"/>
+            <corners android:radius="14dp"/>
+        </shape>
+    </item>
+    <item android:drawable="@drawable/nova_star" android:gravity="center"
+        android:width="40dp" android:height="40dp"/>
+</layer-list>
+''';
+
+const _widgetPlay = '''<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="oval"><solid android:color="#AEB9FF"/></shape>
+    </item>
+    <item android:drawable="@drawable/nova_widget_play_icon" android:gravity="center"
+        android:width="20dp" android:height="20dp"/>
+</layer-list>
+''';
+
+const _widgetPlayIcon = '''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#0C1030" android:pathData="M8,5.5v13l10.5,-6.5z"/>
+</vector>
+''';
+
+const _widgetPrev = '''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#ECEEF5" android:pathData="M6,6h2v12H6zM9.5,12l8.5,6V6z"/>
+</vector>
+''';
+
+const _widgetNext = '''<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <path android:fillColor="#ECEEF5" android:pathData="M6,18l8.5,-6L6,6v12zM16,6v12h2V6h-2z"/>
+</vector>
+''';
+
+const _widgetStrings = '''<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nova_widget_desc">Lagu yang lagi diputar, plus tombol putar dan pindah lagu.</string>
+</resources>
+''';
+
+void patchWidget(String manifestPath) {
+  const res = 'android/app/src/main/res';
+  _write('$res/xml/nova_widget_info.xml', _widgetInfo);
+  _write('$res/layout/nova_widget.xml', _widgetLayout);
+  _write('$res/drawable/nova_widget_bg.xml', _widgetBg);
+  _write('$res/drawable/nova_widget_btn.xml', _widgetBtn);
+  _write('$res/drawable/nova_widget_cover.xml', _widgetCover);
+  _write('$res/drawable/nova_widget_play.xml', _widgetPlay);
+  _write('$res/drawable/nova_widget_play_icon.xml', _widgetPlayIcon);
+  _write('$res/drawable/nova_widget_prev.xml', _widgetPrev);
+  _write('$res/drawable/nova_widget_next.xml', _widgetNext);
+  _write('$res/values/nova_widget_strings.xml', _widgetStrings);
+  final f = File(manifestPath);
+  final m = f.readAsStringSync();
+  if (!m.contains('.NovaWidget')) {
+    f.writeAsStringSync(m.replaceFirst('</application>', '$_widgetReceiver    </application>'));
+  }
+  stdout.writeln('+ widget layar utama');
+}
+
 void unpatchAccessibility(String manifestPath) {
   final f = File(manifestPath);
   final m = f.readAsStringSync();
@@ -282,6 +492,7 @@ void main(List<String> args) {
   patchSplash();
   patchIcon();
   patchNetworkConfig(manifest.path);
+  patchWidget(manifest.path);
   // Layanan Aksesibilitas bikin APK sideload diblok Play Protect, jadi cuma dipasang
   // kalau diminta:  dart tool/patch_android.dart --a11y
   if (args.contains('--a11y')) {
