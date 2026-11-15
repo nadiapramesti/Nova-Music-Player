@@ -105,6 +105,11 @@ class MainActivity : AudioServiceActivity() {
                     }
                     result.success(null)
                 }
+                "setAutoHide" -> {
+                    NovaOverlay.autoHideEnabled = call.arguments as? Boolean ?: true
+                    NovaOverlay.refresh()
+                    result.success(null)
+                }
                 "setEnabled" -> {
                     NovaOverlay.enabled = call.arguments as? Boolean ?: false
                     NovaOverlay.refresh()
@@ -361,13 +366,40 @@ object NovaOverlay {
         }
     }
 
+    /** Kapsul ngilang sendiri setelah beberapa detik; muncul lagi pas ada kejadian. */
+    var autoHideEnabled = true
+    private var gone = false
+    private const val GONE_MS = 4000L
+    private val goneRunnable = Runnable {
+        if (mode != Mode.HIDDEN || !autoHideEnabled) return@Runnable
+        val child = root?.getChildAt(0)
+        if (child == null) {
+            gone = true
+            refresh()
+        } else {
+            child.animate().alpha(0f).translationY(-dp(24f).toFloat()).scaleX(0.6f).setDuration(220)
+                .withEndAction {
+                    gone = true
+                    refresh()
+                }.start()
+        }
+    }
+
+    /** Munculin kapsul lagi (ganti lagu / play-jeda / keluar dari Nova). */
+    private fun wake() {
+        gone = false
+        main.removeCallbacks(goneRunnable)
+    }
+
     fun setAppVisible(visible: Boolean) {
         appVisible = visible
+        if (!visible) wake()
         refresh()
     }
 
     fun update(id: Long, title: String, artist: String, playing: Boolean) {
         val changed = id != songId
+        if (changed || playing != this.playing) wake()
         songId = id
         this.title = title
         this.artist = artist
@@ -394,7 +426,8 @@ object NovaOverlay {
     fun refresh(): String? {
         val c = ctx ?: return null
         val testing = System.currentTimeMillis() < testUntil
-        val show = (enabled || testing) && (!appVisible || testing || host != null) && songId >= 0 && canDraw(c)
+        val show = (enabled || testing) && (!appVisible || testing || host != null) && songId >= 0 &&
+            !(gone && !testing) && canDraw(c)
         return if (show) attach(c) else {
             detach()
             null
@@ -535,7 +568,9 @@ object NovaOverlay {
         frame.removeAllViews()
         // Tiap kartu dibangun ulang (buka / tombol ditekan / ganti lagu), timer diulang.
         main.removeCallbacks(autoHide)
+        main.removeCallbacks(goneRunnable)
         if (mode == Mode.EXPANDED) main.postDelayed(autoHide, AUTO_HIDE_MS)
+        if (mode == Mode.HIDDEN && autoHideEnabled) main.postDelayed(goneRunnable, GONE_MS)
         val statusH = statusBarHeight(c)
         val screenW = c.resources.displayMetrics.widthPixels
 

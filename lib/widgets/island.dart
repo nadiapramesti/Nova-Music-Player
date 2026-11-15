@@ -31,6 +31,12 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
   /// Isi lebar baru ditampilkan setelah animasi ukuran selesai, biar gak luber.
   bool _showFull = false;
 
+  /// Pulau lagi ngumpet (sembunyi otomatis).
+  bool _gone = false;
+  Timer? _goneTimer;
+  int? _lastSongId;
+  bool? _lastPlaying;
+
   @override
   void initState() {
     super.initState();
@@ -40,11 +46,40 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
       } else {
         _eq.stop();
       }
+      if (_lastPlaying != null && _lastPlaying != playing) _wake();
+      _lastPlaying = playing;
+    });
+    audio.current.addListener(_onSong);
+    _armGone();
+  }
+
+  void _onSong() {
+    final id = audio.current.value?.id;
+    if (id != _lastSongId) {
+      _lastSongId = id;
+      _wake();
+    }
+  }
+
+  /// Munculin lagi lalu pasang timer ngumpet.
+  void _wake() {
+    if (!mounted) return;
+    if (_gone) setState(() => _gone = false);
+    _armGone();
+  }
+
+  void _armGone() {
+    _goneTimer?.cancel();
+    if (!island.autoHide || _open) return;
+    _goneTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && !_open && island.autoHide) setState(() => _gone = true);
     });
   }
 
   @override
   void dispose() {
+    audio.current.removeListener(_onSong);
+    _goneTimer?.cancel();
     _autoClose?.cancel();
     _sub?.cancel();
     _eq.dispose();
@@ -68,6 +103,7 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
   void _toggle(bool open) {
     setState(() => _open = open);
     _armAutoClose();
+    _armGone();
   }
 
   void _hide(Song song) => setState(() {
@@ -111,7 +147,17 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
               top: _open ? top + 8 : y,
               left: 0,
               right: 0,
-              child: Center(
+              // Sembunyi otomatis: naik + pudar ke balik status bar.
+              child: IgnorePointer(
+                ignoring: _gone,
+                child: AnimatedSlide(
+                  offset: _gone ? const Offset(0, -1.4) : Offset.zero,
+                  duration: const Duration(milliseconds: 260),
+                  curve: Curves.easeOutCubic,
+                  child: AnimatedOpacity(
+                    opacity: _gone ? 0 : 1,
+                    duration: const Duration(milliseconds: 220),
+                    child: Center(
                 child: Semantics(
                   button: !_open,
                   label: _open ? null : 'Kontrol lagu: ${song.title}',
@@ -140,6 +186,9 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
                       ),
                       child: _content(song),
                     ),
+                  ),
+                ),
+              ),
                   ),
                 ),
               ),

@@ -44,6 +44,14 @@ void showSettingsSheet(BuildContext context) {
               ),
               const SizedBox(height: 10),
               _Toggle(
+                title: 'Sembunyi otomatis',
+                body: 'Pulau muncul sebentar pas ganti lagu, play/jeda, atau keluar dari Nova, '
+                    'lalu ngilang sendiri setelah 4 detik.',
+                value: island.autoHide,
+                onChanged: island.setAutoHide,
+              ),
+              const SizedBox(height: 10),
+              _Toggle(
                 title: 'Tetap tampil di luar app',
                 body: 'Pil ikut muncul di atas app lain. Tap pil = kartu lagu, geser ke atas = '
                     'sembunyi jadi titik kecil, tap titiknya = muncul lagi. Tahan = buka Nova.',

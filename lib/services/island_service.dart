@@ -17,6 +17,9 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
   bool inApp = true;
   bool outside = false;
 
+  /// Pulau ngilang sendiri setelah beberapa detik, muncul lagi pas ganti lagu / play-jeda.
+  bool autoHide = true;
+
   /// Layanan Aksesibilitas Nova aktif: pulau native tipis tampil di notch, di dalam
   /// maupun di luar app (pulau Flutter disembunyikan).
   bool precise = false;
@@ -34,7 +37,9 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     _p = p;
     inApp = p.getBool('islandInApp') ?? true;
     outside = p.getBool('islandOutside') ?? false;
+    autoHide = p.getBool('islandAutoHide') ?? true;
     if (outside && !await canDraw()) outside = false;
+    await _send('setAutoHide', autoHide);
     await _send('setEnabled', outside);
 
     precise = await _isPrecise();
@@ -86,6 +91,13 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
   Future<void> requestPermission() async {
     _waitingPermission = true;
     await _send('requestPermission', null);
+  }
+
+  void setAutoHide(bool v) {
+    autoHide = v;
+    _p?.setBool('islandAutoHide', v);
+    _send('setAutoHide', v);
+    notifyListeners();
   }
 
   void setInApp(bool v) {
