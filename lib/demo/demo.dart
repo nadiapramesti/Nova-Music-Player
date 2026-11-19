@@ -8,8 +8,5 @@
 library;
 
 const bool kDemo = bool.fromEnvironment('DEMO');
-/// Build khusus dengan layanan Aksesibilitas (lihat tool/patch_android.dart --a11y).
-/// APK sideload yang punya Aksesibilitas diblok Play Protect, jadi default-nya mati.
-const bool kA11y = bool.fromEnvironment('A11Y');
 
 const String kDemoTheme = String.fromEnvironment('DEMO_THEME', defaultValue: 'dark');

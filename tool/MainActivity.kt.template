@@ -243,11 +243,6 @@ class MainActivity : AudioServiceActivity() {
                     )
                     result.success(null)
                 }
-                "precise" -> result.success(NovaOverlay.precise)
-                "openAccessibility" -> {
-                    startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-                    result.success(null)
-                }
                 else -> result.notImplemented()
             }
         }

@@ -15,7 +15,7 @@ class SplashGate extends StatefulWidget {
 
 class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateMixin {
   late final AnimationController _c =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1900));
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
   bool _done = false;
 
   @override
@@ -38,17 +38,19 @@ class _SplashGateState extends State<SplashGate> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 450),
-      switchInCurve: Curves.easeOut,
+      duration: const Duration(milliseconds: 380),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeInCubic,
       child: _done ? widget.child : _splash(),
     );
   }
 
   Widget _splash() {
-    final glow = _seg(0.0, 0.55);
-    final mark = _seg(0.05, 0.45, Curves.easeOutBack);
-    final word = _seg(0.3, 0.6);
-    final slogan = _seg(0.45, 0.75);
+    // Total 0,9 detik: app musik dibuka berkali-kali sehari, jangan bikin nunggu.
+    final glow = _seg(0.0, 0.6);
+    final mark = _seg(0.0, 0.5, Curves.easeOutBack);
+    final word = _seg(0.25, 0.65);
+    final slogan = _seg(0.4, 0.8);
 
     return Scaffold(
       key: const ValueKey('splash'),

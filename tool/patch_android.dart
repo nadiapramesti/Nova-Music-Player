@@ -493,13 +493,9 @@ void main(List<String> args) {
   patchIcon();
   patchNetworkConfig(manifest.path);
   patchWidget(manifest.path);
-  // Layanan Aksesibilitas bikin APK sideload diblok Play Protect, jadi cuma dipasang
-  // kalau diminta:  dart tool/patch_android.dart --a11y
-  if (args.contains('--a11y')) {
-    patchAccessibility(manifest.path);
-  } else {
-    unpatchAccessibility(manifest.path);
-  }
+  // Layanan Aksesibilitas (mode presisi pulau) udah dibuang: bikin APK diblok Play
+  // Protect. Sisa dari build lama dibersihin.
+  unpatchAccessibility(manifest.path);
 
   stdout.writeln('Beres. Lanjut: flutter pub get');
 }

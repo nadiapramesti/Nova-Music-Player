@@ -127,7 +127,7 @@ class _NowIslandState extends State<NowIsland> with SingleTickerProviderStateMix
       listenable: Listenable.merge([audio.current, island]),
       builder: (context, _) {
         final song = audio.current.value;
-        if (song == null || !island.inApp || island.nativeEverywhere || _hiddenFor == song.id) {
+        if (song == null || !island.inApp || _hiddenFor == song.id) {
           return const SizedBox.shrink();
         }
         return Stack(

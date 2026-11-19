@@ -19,14 +19,9 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
   bool inApp = true;
   bool outside = false;
 
-  /// Pulau ngilang sendiri setelah beberapa detik, muncul lagi pas ganti lagu / play-jeda.
-  bool autoHide = true;
-
-  /// Layanan Aksesibilitas Nova aktif: pulau native tipis tampil di notch, di dalam
-  /// maupun di luar app (pulau Flutter disembunyikan).
-  bool precise = false;
-
-  bool get nativeEverywhere => precise && outside;
+  /// Pulau selalu ngilang sendiri setelah beberapa detik, muncul lagi pas ganti
+  /// lagu / play-jeda (dulu bisa dimatiin, sekarang otomatis).
+  final bool autoHide = true;
   bool _waitingPermission = false;
 
   Future<void> init(PlayerService audio, StatsService stats) async {
@@ -37,14 +32,13 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     }
     final p = await SharedPreferences.getInstance();
     _p = p;
-    inApp = p.getBool('islandInApp') ?? true;
+    // Bawaannya mati: di dalam Nova info lagu udah ada di pemutar mini.
+    inApp = p.getBool('islandInApp') ?? false;
     outside = p.getBool('islandOutside') ?? false;
-    autoHide = p.getBool('islandAutoHide') ?? true;
     if (outside && !await canDraw()) outside = false;
-    await _send('setAutoHide', autoHide);
+    await _send('setAutoHide', true);
     await _send('setEnabled', outside);
 
-    precise = await _isPrecise();
     WidgetsBinding.instance.addObserver(this);
     void push() => _send('update', {
           'id': audio.current.value?.id ?? -1,
@@ -94,16 +88,6 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     });
   }
 
-  Future<bool> _isPrecise() async {
-    try {
-      return await _ch.invokeMethod<bool>('precise') ?? false;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  Future<void> openAccessibility() => _send('openAccessibility', null);
-
   Future<bool> canDraw() async {
     try {
       return await _ch.invokeMethod<bool>('canDraw') ?? false;
@@ -133,13 +117,6 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
     await _send('requestPermission', null);
   }
 
-  void setAutoHide(bool v) {
-    autoHide = v;
-    _p?.setBool('islandAutoHide', v);
-    _send('setAutoHide', v);
-    notifyListeners();
-  }
-
   void setInApp(bool v) {
     inApp = v;
     _p?.setBool('islandInApp', v);
@@ -161,14 +138,6 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _isPrecise().then((p) {
-        if (p != precise) {
-          precise = p;
-          notifyListeners();
-        }
-      });
-    }
     if (state == AppLifecycleState.resumed && _waitingPermission) {
       _waitingPermission = false;
       canDraw().then((ok) {
