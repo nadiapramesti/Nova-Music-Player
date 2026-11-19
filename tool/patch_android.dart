@@ -454,11 +454,13 @@ void patchSigning() {
   final f = File('android/app/build.gradle.kts');
   var g = f.readAsStringSync();
   if (g.contains('novaRelease')) return;
+  // `java.util...` gak bisa langsung di skrip Gradle (kebaca ekstensi `java`), jadi di-import.
   const props = """
-val novaKeyProps = java.util.Properties().apply {
-    rootProject.file("key.properties").inputStream().use { load(it) }
+val novaKeyProps = Properties().apply {
+    FileInputStream(rootProject.file("key.properties")).use { stream -> load(stream) }
 }
 """;
+  g = 'import java.io.FileInputStream\nimport java.util.Properties\n\n$g';
   g = g.replaceFirst('android {', '${props}\nandroid {');
   const config = """
     signingConfigs {
