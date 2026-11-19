@@ -212,6 +212,9 @@ class PlayerService {
       artist: s.artist,
       album: s.album,
       duration: s.duration,
+      // Cover di notifikasi, layar kunci, & kartu musik HP (diambil Android dari file lagunya).
+      artUri: kDemo ? null : Uri.parse(s.uri),
+      extras: kDemo ? null : {'loadThumbnailUri': s.uri},
     );
     // Mode demo: audio senyap sepanjang durasi lagu (gak ada file asli).
     if (kDemo) return SilentAudioSource(durationMs: s.durationMs, tag: tag);
