@@ -238,6 +238,11 @@ class _ResumeCard extends StatelessWidget {
       builder: (context, cur, _) {
         final song = cur ?? library.byId(stats.lastSongId) ?? songs.first;
         final isCurrent = cur?.id == song.id;
+        return StreamBuilder<bool>(
+          stream: audio.player.playingStream,
+          initialData: audio.player.playing,
+          builder: (context, playSnap) {
+        final playing = isCurrent && (playSnap.data ?? false);
         return Padding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
           child: Glass(
@@ -251,7 +256,7 @@ class _ResumeCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(isCurrent ? 'SEDANG DIPUTAR' : 'LANJUTKAN',
+                      Text(playing ? 'SEDANG DIPUTAR' : 'LANJUTKAN',
                           style: mono(TS.label, spacing: 1)),
                       const SizedBox(height: 3),
                       Text(song.title,
@@ -278,13 +283,16 @@ class _ResumeCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 RoundButton(
-                  icon: isCurrent ? Icons.open_in_full_rounded : Icons.play_arrow_rounded,
-                  label: isCurrent ? 'Buka pemutar' : 'Lanjutkan memutar',
+                  icon: playing ? Icons.open_in_full_rounded : Icons.play_arrow_rounded,
+                  label: playing ? 'Buka pemutar' : 'Lanjutkan memutar',
                   fill: Nv.accent,
                   fg: Nv.onAccent,
                   onTap: () {
-                    if (isCurrent) {
+                    if (playing) {
                       openNowPlaying(context);
+                    } else if (isCurrent) {
+                      // Antrean terakhir udah dipulihin: tinggal lanjut dari detiknya.
+                      audio.player.play();
                     } else {
                       final i = songs.indexWhere((s) => s.id == song.id);
                       playAndOpen(context, songs, i < 0 ? 0 : i, from: 'Daftar putar · Terbaru');
@@ -294,6 +302,8 @@ class _ResumeCard extends StatelessWidget {
               ],
             ),
           ),
+        );
+          },
         );
       },
     );

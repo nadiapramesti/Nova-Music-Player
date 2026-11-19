@@ -11,6 +11,7 @@ import '../demo/demo.dart';
 import '../demo/silent_source.dart';
 import '../models.dart';
 import 'nova_shuffle.dart';
+import 'resume.dart';
 import 'sleep_timer.dart';
 import 'transition.dart';
 import 'stats_service.dart';
@@ -221,7 +222,13 @@ class PlayerService {
     return AudioSource.uri(Uri.parse(s.uri), tag: tag);
   }
 
-  Future<void> playQueue(List<Song> songs, int index, {String? from, Duration startAt = Duration.zero}) async {
+  Future<void> playQueue(
+    List<Song> songs,
+    int index, {
+    String? from,
+    Duration startAt = Duration.zero,
+    bool autoplay = true,
+  }) async {
     if (songs.isEmpty) return;
     _queue = List.of(songs);
     _cur = index;
@@ -235,7 +242,65 @@ class PlayerService {
     _queueChanged();
     await player.setAudioSource(_source!, initialIndex: index, initialPosition: startAt);
     // Gak di-await: future play() baru selesai pas lagu berhenti.
-    player.play();
+    if (autoplay) player.play();
+  }
+
+  // ---- Lanjut dari terakhir ----
+
+  Timer? _resumeTicker;
+  bool _resumeHooked = false;
+
+  /// Pulihkan antrean terakhir (dijeda, siap diputar). Dipanggil sekali setelah
+  /// pustaka kebaca. Gak ngapa-ngapain kalau udah ada lagu yang jalan.
+  Future<void> restoreLast(List<Song> library) async {
+    if (kDemo || _resumeHooked || library.isEmpty) return;
+    _hookResume();
+    if (_source != null) return;
+    final p = await SharedPreferences.getInstance();
+    final st = ResumeState.decode(p.getString('resume'));
+    if (st == null) return;
+    final r = restoreQueue(st, {for (final s in library) s.id: s});
+    if (r == null) return;
+    try {
+      await player.setLoopMode(switch (st.loop) { 'all' => LoopMode.all, 'one' => LoopMode.one, _ => LoopMode.off });
+      await playQueue(r.songs, r.index, from: st.from, startAt: r.position, autoplay: false);
+      if (st.shuffle) {
+        await player.setShuffleModeEnabled(true);
+        await player.shuffle();
+      }
+    } catch (_) {}
+  }
+
+  void _hookResume() {
+    _resumeHooked = true;
+    queueVersion.addListener(_saveResume);
+    current.addListener(_saveResume);
+    player.playingStream.listen((playing) {
+      _resumeTicker?.cancel();
+      _resumeTicker = null;
+      if (playing) {
+        // Detik disimpan tiap 5 detik selama muter, biar kalau HP mati tetap dekat.
+        _resumeTicker = Timer.periodic(const Duration(seconds: 5), (_) => _saveResume());
+      } else {
+        _saveResume();
+      }
+    });
+    player.shuffleModeEnabledStream.listen((_) => _saveResume());
+    player.loopModeStream.listen((_) => _saveResume());
+  }
+
+  Future<void> _saveResume() async {
+    final cur = _cur;
+    if (_queue.isEmpty || cur == null) return;
+    final st = ResumeState(
+      ids: [for (final s in _queue) s.id],
+      index: cur.clamp(0, _queue.length - 1),
+      positionMs: player.position.inMilliseconds,
+      from: source.value,
+      shuffle: player.shuffleModeEnabled,
+      loop: player.loopMode.name,
+    );
+    (await SharedPreferences.getInstance()).setString('resume', st.encode());
   }
 
   Future<void> shuffleQueue(List<Song> songs, {String? from}) async {

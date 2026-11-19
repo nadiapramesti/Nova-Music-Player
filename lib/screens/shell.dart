@@ -26,7 +26,11 @@ class _ShellState extends State<Shell> {
     // Minta izin + baca lagu setelah layar pertama tampil.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await library.load();
-      if (kDemo) _startDemoPlayback();
+      if (kDemo) {
+        _startDemoPlayback();
+      } else {
+        await audio.restoreLast(library.songs);
+      }
     });
   }
 
