@@ -14,6 +14,7 @@ import 'art.dart';
 void showQueueSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
+    sheetAnimationStyle: Motion.sheet,
     isScrollControlled: true,
     builder: (context) => DraggableScrollableSheet(
       initialChildSize: 0.62,

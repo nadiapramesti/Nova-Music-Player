@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../demo/demo.dart';
 import '../services/services.dart';
 import '../widgets/deck.dart';
+import '../theme.dart';
 import '../widgets/island.dart';
 import 'home_screen.dart';
 import 'search_screen.dart';
@@ -107,7 +108,8 @@ class _TabPage extends StatefulWidget {
 class _TabPageState extends State<_TabPage> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 340),
+    duration: Motion.base,
+    reverseDuration: Motion.fast,
     value: widget.active ? 1 : 0,
   );
 
@@ -131,9 +133,11 @@ class _TabPageState extends State<_TabPage> with SingleTickerProviderStateMixin 
       animation: _c,
       child: widget.child,
       builder: (context, child) {
-        final v = Curves.easeOutCubic.transform(_c.value);
+        // Masuk mendarat pelan; keluar cepat & ringan biar gak tumpang tindih.
+        final leaving = !widget.active;
+        final v = (leaving ? Curves.easeInCubic : Motion.enter).transform(_c.value);
         final hidden = _c.value == 0 && !widget.active;
-        final dx = (1 - v) * (widget.fromLeft ? -28.0 : 28.0);
+        final dx = (1 - v) * (widget.fromLeft ? -20.0 : 20.0) * (leaving ? 0.5 : 1);
         return Offstage(
           offstage: hidden,
           child: IgnorePointer(
@@ -142,7 +146,10 @@ class _TabPageState extends State<_TabPage> with SingleTickerProviderStateMixin 
               enabled: !hidden,
               child: Opacity(
                 opacity: v,
-                child: Transform.translate(offset: Offset(dx, 0), child: child),
+                child: Transform.translate(
+                  offset: Offset(dx, 0),
+                  child: Transform.scale(scale: 0.985 + 0.015 * v, child: child),
+                ),
               ),
             ),
           ),

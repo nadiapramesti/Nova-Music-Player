@@ -9,6 +9,7 @@ import 'controls.dart';
 void showSleepSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
+    sheetAnimationStyle: Motion.sheet,
     builder: (context) => Padding(
       padding: EdgeInsets.fromLTRB(8, 0, 8, MediaQuery.of(context).padding.bottom + 8),
       child: Glass(

@@ -11,6 +11,7 @@ import 'controls.dart';
 Future<T?> showGlassSheet<T>(BuildContext context, Widget Function(BuildContext) builder) {
   return showModalBottomSheet<T>(
     context: context,
+    sheetAnimationStyle: Motion.sheet,
     isScrollControlled: true,
     builder: (context) => Padding(
       padding: EdgeInsets.fromLTRB(

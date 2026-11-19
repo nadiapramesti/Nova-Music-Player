@@ -11,6 +11,7 @@ import '../models.dart';
 void showSettingsSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
+    sheetAnimationStyle: Motion.sheet,
     isScrollControlled: true,
     builder: (context) => Padding(
       padding: EdgeInsets.fromLTRB(8, 0, 8, MediaQuery.of(context).padding.bottom + 8),

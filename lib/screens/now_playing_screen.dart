@@ -30,14 +30,23 @@ final showLyrics = ValueNotifier<bool>(false);
 
 void openNowPlaying(BuildContext context) {
   Navigator.of(context).push(PageRouteBuilder<void>(
-    transitionDuration: const Duration(milliseconds: 360),
-    reverseTransitionDuration: const Duration(milliseconds: 280),
+    transitionDuration: Motion.slow,
+    reverseTransitionDuration: const Duration(milliseconds: 300),
     pageBuilder: (_, __, ___) => const NowPlayingScreen(),
     transitionsBuilder: (_, anim, __, child) {
-      final c = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
-      return SlideTransition(
-        position: Tween(begin: const Offset(0, 1), end: Offset.zero).animate(c),
-        child: child,
+      // Naik dari bawah, mendarat pelan; isinya muncul sambil naik.
+      final slide = CurvedAnimation(parent: anim, curve: Motion.enter, reverseCurve: Motion.exit);
+      final fade = CurvedAnimation(
+        parent: anim,
+        curve: const Interval(0, 0.5, curve: Curves.easeOut),
+        reverseCurve: const Interval(0.4, 1, curve: Curves.easeIn),
+      );
+      return FadeTransition(
+        opacity: fade,
+        child: SlideTransition(
+          position: Tween(begin: const Offset(0, 0.35), end: Offset.zero).animate(slide),
+          child: child,
+        ),
       );
     },
   ));
@@ -70,7 +79,13 @@ class NowPlayingScreen extends StatelessWidget {
                         child: ValueListenableBuilder<bool>(
                           valueListenable: showLyrics,
                           builder: (context, on, _) => AnimatedSwitcher(
-                            duration: const Duration(milliseconds: 300),
+                            duration: Motion.base,
+                            switchInCurve: Motion.enter,
+                            switchOutCurve: Motion.exit,
+                            transitionBuilder: (child, a) => FadeTransition(
+                              opacity: a,
+                              child: ScaleTransition(scale: Tween(begin: 0.96, end: 1.0).animate(a), child: child),
+                            ),
                             child: on
                                 ? LyricsView(key: const ValueKey('lyrics'), song: song)
                                 : Center(key: const ValueKey('cover'), child: _Cover(song: song)),

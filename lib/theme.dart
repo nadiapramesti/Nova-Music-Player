@@ -265,6 +265,66 @@ TextStyle mono(double size, {double w = 600, Color? color, double spacing = 0}) 
   );
 }
 
+/// Gerak Nova: kurva & durasi yang sama di semua transisi biar terasa satu app.
+abstract final class Motion {
+  /// Masuk: cepat di awal, mendarat pelan (emphasized decelerate).
+  static const enter = Cubic(0.05, 0.7, 0.1, 1.0);
+
+  /// Keluar: mulai pelan, makin cepat (emphasized accelerate).
+  static const exit = Cubic(0.3, 0.0, 0.8, 0.15);
+
+  /// Gerak biasa di tempat (pudar, geser kecil).
+  static const standard = Cubic(0.2, 0.0, 0.0, 1.0);
+
+  static const fast = Duration(milliseconds: 200);
+  static const base = Duration(milliseconds: 320);
+  static const slow = Duration(milliseconds: 420);
+
+  /// Semua lembar bawah (aksi lagu, antrean, pengaturan, timer, equalizer).
+  static const sheet = AnimationStyle(
+    duration: Duration(milliseconds: 380),
+    reverseDuration: Duration(milliseconds: 240),
+    curve: enter,
+    reverseCurve: exit,
+  );
+}
+
+/// Pindah halaman (album, artis, playlist): halaman baru geser masuk sedikit
+/// sambil muncul, halaman lama minggir sedikit sambil pudar.
+class NovaPageTransitions extends PageTransitionsBuilder {
+  const NovaPageTransitions();
+
+  @override
+  Widget buildTransitions<T>(
+    PageRoute<T> route,
+    BuildContext context,
+    Animation<double> animation,
+    Animation<double> secondaryAnimation,
+    Widget child,
+  ) {
+    final inSlide = CurvedAnimation(parent: animation, curve: Motion.enter, reverseCurve: Motion.exit);
+    final inFade = CurvedAnimation(
+      parent: animation,
+      curve: const Interval(0, 0.6, curve: Curves.easeOut),
+      reverseCurve: const Interval(0.3, 1, curve: Curves.easeIn),
+    );
+    final outMove = CurvedAnimation(parent: secondaryAnimation, curve: Motion.standard);
+    return SlideTransition(
+      position: Tween(begin: Offset.zero, end: const Offset(-0.05, 0)).animate(outMove),
+      child: FadeTransition(
+        opacity: Tween(begin: 1.0, end: 0.35).animate(outMove),
+        child: FadeTransition(
+          opacity: inFade,
+          child: SlideTransition(
+            position: Tween(begin: const Offset(0.07, 0), end: Offset.zero).animate(inSlide),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 ThemeData buildTheme() {
   return ThemeData(
     useMaterial3: true,
@@ -287,6 +347,10 @@ ThemeData buildTheme() {
       selectionColor: Nv.accentSoft,
       selectionHandleColor: Nv.accent,
     ),
+    pageTransitionsTheme: const PageTransitionsTheme(builders: {
+      TargetPlatform.android: NovaPageTransitions(),
+      TargetPlatform.iOS: NovaPageTransitions(),
+    }),
     bottomSheetTheme: const BottomSheetThemeData(
       backgroundColor: Colors.transparent,
       modalBackgroundColor: Colors.transparent,
