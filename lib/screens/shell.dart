@@ -177,7 +177,7 @@ class _TabPageState extends State<_TabPage> with SingleTickerProviderStateMixin 
             child: TickerMode(
               enabled: !hidden,
               child: v >= 1
-                  ? child
+                  ? child!
                   : Opacity(
                       opacity: v,
                       child: Transform.translate(offset: Offset(dx, 0), child: child),
