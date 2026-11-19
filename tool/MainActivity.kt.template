@@ -57,8 +57,46 @@ import java.util.concurrent.Executors
  * - channel "nova/media": daftar lagu + cover dari MediaStore, dan "moveToBack".
  * - channel "nova/overlay": pulau di notch yang tetap tampil di luar app.
  */
+private const val REQ_BACKUP_SAVE = 7101
+private const val REQ_BACKUP_OPEN = 7102
+
 class MainActivity : AudioServiceActivity() {
     private val main = Handler(Looper.getMainLooper())
+
+    // Cadangan data: pilih tempat simpan / file lewat pemilih file Android (tanpa izin tambahan).
+    private var backupResult: MethodChannel.Result? = null
+    private var backupContent: String? = null
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != REQ_BACKUP_SAVE && requestCode != REQ_BACKUP_OPEN) return
+        val res = backupResult ?: return
+        backupResult = null
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) {
+            res.success(null) // dibatalin
+            return
+        }
+        val content = backupContent
+        backupContent = null
+        NovaMedia.io.execute {
+            try {
+                if (requestCode == REQ_BACKUP_SAVE) {
+                    contentResolver.openOutputStream(uri, "wt")!!.use { it.write((content ?: "").toByteArray(Charsets.UTF_8)) }
+                    main.post { res.success("ok") }
+                } else {
+                    val text = contentResolver.openInputStream(uri)!!.use { input ->
+                        val bytes = input.readBytes()
+                        if (bytes.size > 5_000_000) throw IllegalStateException("kegedean")
+                        String(bytes, Charsets.UTF_8)
+                    }
+                    main.post { res.success(text) }
+                }
+            } catch (e: Exception) {
+                main.post { res.error("backup", e.message, null) }
+            }
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -110,6 +148,40 @@ class MainActivity : AudioServiceActivity() {
                 "moveToBack" -> {
                     moveTaskToBack(true)
                     result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        MethodChannel(messenger, "nova/backup").setMethodCallHandler { call, result ->
+            when (call.method) {
+                "save" -> {
+                    backupResult?.success(null)
+                    backupResult = result
+                    backupContent = call.argument<String>("content") ?: ""
+                    val i = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .setType("application/json")
+                        .putExtra(Intent.EXTRA_TITLE, call.argument<String>("name") ?: "nova-cadangan.json")
+                    startActivityForResult(i, REQ_BACKUP_SAVE)
+                }
+                "open" -> {
+                    backupResult?.success(null)
+                    backupResult = result
+                    val i = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .setType("*/*")
+                        .putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "text/plain", "application/octet-stream"))
+                    startActivityForResult(i, REQ_BACKUP_OPEN)
+                }
+                // Habis pulihin cadangan: buka ulang Nova biar semua data kebaca bersih.
+                "restart" -> {
+                    result.success(null)
+                    val launch = packageManager.getLaunchIntentForPackage(packageName)
+                    if (launch?.component != null) {
+                        startActivity(Intent.makeRestartActivityTask(launch.component))
+                    }
+                    main.postDelayed({ Runtime.getRuntime().exit(0) }, 300)
                 }
                 else -> result.notImplemented()
             }

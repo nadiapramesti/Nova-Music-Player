@@ -64,6 +64,25 @@ void showSettingsSheet(BuildContext context) {
                 onTap: () => showHiddenFoldersSheet(context),
               ),
               const SizedBox(height: 22),
+              Text('Cadangan', style: disp(TS.h2, spacing: -0.6)),
+              const SizedBox(height: 4),
+              Text(
+                'Playlist, favorit, info lagu yang diubah, dan pengaturan. '
+                'Simpan dulu sebelum hapus-pasang Nova.',
+                style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.35),
+              ),
+              const SizedBox(height: 12),
+              ActionTile(
+                icon: Icons.save_alt_rounded,
+                label: 'Simpan cadangan',
+                onTap: () => _exportBackup(context),
+              ),
+              ActionTile(
+                icon: Icons.restore_rounded,
+                label: 'Pulihkan dari cadangan',
+                onTap: () => _importBackup(context),
+              ),
+              const SizedBox(height: 22),
               Text('Pulau di notch', style: disp(TS.h2, spacing: -0.6)),
               const SizedBox(height: 14),
               _Toggle(
@@ -423,4 +442,61 @@ class _FolderTile extends StatelessWidget {
       ),
     );
   }
+}
+
+final _backup = BackupService();
+
+Future<void> _exportBackup(BuildContext context) async {
+  try {
+    final ok = await _backup.export();
+    if (ok && context.mounted) showToast(context, 'Cadangan tersimpan');
+  } catch (_) {
+    if (context.mounted) showToast(context, 'Gagal nyimpen cadangan, coba pilih folder lain');
+  }
+}
+
+Future<void> _importBackup(BuildContext context) async {
+  Map<String, Object>? data;
+  try {
+    data = await _backup.pick();
+  } on FormatException {
+    if (context.mounted) showToast(context, 'File itu bukan cadangan Nova');
+    return;
+  } catch (_) {
+    if (context.mounted) showToast(context, 'File gak bisa dibaca');
+    return;
+  }
+  if (data == null || !context.mounted) return;
+  final found = data;
+  final sum = summarizeBackup(found);
+  await showGlassSheet<void>(context, (sheet) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('CADANGAN', style: mono(TS.label, spacing: 1.2)),
+        const SizedBox(height: 4),
+        Text('Pulihkan data ini?', style: disp(TS.h2, spacing: -0.6)),
+        const SizedBox(height: 6),
+        Text(
+          '${sum.favorites} favorit · ${sum.playlists} playlist · ${sum.edits} info lagu diubah. '
+          'Data Nova yang sekarang bakal diganti, lalu Nova dibuka ulang (musik berhenti sebentar).',
+          style: disp(TS.body, w: 500, color: Nv.muted, height: 1.4),
+        ),
+        const SizedBox(height: 18),
+        WideButton(
+          label: 'Batal',
+          icon: Icons.close_rounded,
+          primary: false,
+          onTap: () => Navigator.of(sheet).pop(),
+        ),
+        const SizedBox(height: 8),
+        WideButton(
+          label: 'Pulihkan & buka ulang',
+          icon: Icons.restore_rounded,
+          onTap: () => _backup.restore(found),
+        ),
+      ],
+    );
+  });
 }
