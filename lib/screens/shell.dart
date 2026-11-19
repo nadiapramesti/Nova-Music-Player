@@ -18,6 +18,15 @@ class Shell extends StatefulWidget {
 
 class _ShellState extends State<Shell> {
   int _tab = 0;
+  int _prev = 0;
+
+  void _go(int i) {
+    if (i == _tab) return;
+    setState(() {
+      _prev = _tab;
+      _tab = i;
+    });
+  }
 
   static const _pages = [HomeScreen(), ShelfScreen(), SearchScreen()];
 
@@ -64,7 +73,7 @@ class _ShellState extends State<Shell> {
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         if (_tab != 0) {
-          setState(() => _tab = 0);
+          _go(0);
         } else {
           library.moveToBack();
         }
@@ -77,13 +86,32 @@ class _ShellState extends State<Shell> {
             // pindahnya pakai geser + pudar ke arah tab tujuan.
             for (var i = 0; i < _pages.length; i++)
               Positioned.fill(
-                child: _TabPage(active: i == _tab, fromLeft: i < _tab, child: _pages[i]),
+                child: _TabPage(active: i == _tab, fromLeft: i < _prev, child: _pages[i]),
               ),
+            // Pudar di bawah: isi daftar gak keliatan nyelip di bawah/sela dek.
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              height: bottom + 150,
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [Nv.bg.withAlpha(0), Nv.bg.withAlpha(235), Nv.bg],
+                      stops: const [0, 0.55, 1],
+                    ),
+                  ),
+                ),
+              ),
+            ),
             Positioned(
               left: 12,
               right: 12,
               bottom: bottom + 12,
-              child: Deck(tab: _tab, onTab: (i) => setState(() => _tab = i)),
+              child: Deck(tab: _tab, onTab: _go),
             ),
             const Positioned.fill(child: NowIsland()),
           ],
@@ -108,16 +136,22 @@ class _TabPage extends StatefulWidget {
 class _TabPageState extends State<_TabPage> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
-    duration: Motion.base,
-    reverseDuration: Motion.fast,
+    duration: const Duration(milliseconds: 280),
     value: widget.active ? 1 : 0,
   );
+  late final Animation<double> _in = CurvedAnimation(parent: _c, curve: Motion.enter);
 
   @override
   void didUpdateWidget(_TabPage old) {
     super.didUpdateWidget(old);
     if (widget.active != old.active) {
-      widget.active ? _c.forward() : _c.reverse();
+      if (widget.active) {
+        _c.forward(from: 0);
+      } else {
+        // Halaman yang ditinggal langsung disembunyiin: gak ada dua halaman kaca
+        // buram yang digambar barengan, jadi pindah tab tetap mulus di HP.
+        _c.value = 0;
+      }
     }
   }
 
@@ -131,26 +165,23 @@ class _TabPageState extends State<_TabPage> with SingleTickerProviderStateMixin 
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: _c,
-      child: widget.child,
+      child: RepaintBoundary(child: widget.child),
       builder: (context, child) {
-        // Masuk mendarat pelan; keluar cepat & ringan biar gak tumpang tindih.
-        final leaving = !widget.active;
-        final v = (leaving ? Curves.easeInCubic : Motion.enter).transform(_c.value);
-        final hidden = _c.value == 0 && !widget.active;
-        final dx = (1 - v) * (widget.fromLeft ? -20.0 : 20.0) * (leaving ? 0.5 : 1);
+        final hidden = !widget.active && _c.value == 0;
+        final v = _in.value;
+        final dx = (1 - v) * (widget.fromLeft ? -16.0 : 16.0);
         return Offstage(
           offstage: hidden,
           child: IgnorePointer(
             ignoring: !widget.active,
             child: TickerMode(
               enabled: !hidden,
-              child: Opacity(
-                opacity: v,
-                child: Transform.translate(
-                  offset: Offset(dx, 0),
-                  child: Transform.scale(scale: 0.985 + 0.015 * v, child: child),
-                ),
-              ),
+              child: v >= 1
+                  ? child
+                  : Opacity(
+                      opacity: v,
+                      child: Transform.translate(offset: Offset(dx, 0), child: child),
+                    ),
             ),
           ),
         );

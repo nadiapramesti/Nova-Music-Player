@@ -24,3 +24,7 @@ test/widget_test.dart
 .DS_Store
 nova.apk
 screenshots/
+
+# Kunci tanda tangan (jangan pernah di-commit polos)
+*.jks
+key.properties

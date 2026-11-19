@@ -196,8 +196,8 @@ class _NavBar extends StatelessWidget {
               ],
             ),
             AnimatedPositioned(
-              duration: const Duration(milliseconds: 380),
-              curve: Curves.easeOutBack,
+              duration: const Duration(milliseconds: 280),
+              curve: Motion.enter,
               left: tab * (w + gap),
               top: 0,
               width: w,
@@ -223,7 +223,7 @@ class _NavBar extends StatelessWidget {
                           onTap: () => onTab(i),
                           child: Center(
                             child: AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 250),
+                              duration: Motion.fast,
                               style: disp(TS.body, w: i == tab ? 800 : 700, color: i == tab ? Nv.bg : Nv.text),
                               child: Text(Deck.tabs[i]),
                             ),

@@ -33,6 +33,25 @@ jobs:
           dart tool/patch_android.dart
           flutter pub get
 
+      # Kunci tanda tangan permanen (biar update bisa dipasang di atas versi lama).
+      # File kuncinya disimpan terenkripsi di repo; passwordnya di secret NOVA_KEY_PASSWORD.
+      - name: Kunci tanda tangan
+        id: sign
+        env:
+          NOVA_KEY_PASSWORD: ${{ secrets.NOVA_KEY_PASSWORD }}
+        run: |
+          if [ -z "$NOVA_KEY_PASSWORD" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Secret NOVA_KEY_PASSWORD belum diisi: APK pakai kunci debug & gak dirilis."
+            exit 0
+          fi
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in tool/signing/nova-release.jks.enc \
+            -out android/app/nova-release.jks -pass env:NOVA_KEY_PASSWORD
+          printf 'storeFile=nova-release.jks\nstorePassword=%s\nkeyAlias=nova\nkeyPassword=%s\n' \
+            "$NOVA_KEY_PASSWORD" "$NOVA_KEY_PASSWORD" > android/key.properties
+          dart tool/patch_android.dart --sign
+          echo "ready=true" >> "$GITHUB_OUTPUT"
+
       - name: Analyze
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
@@ -44,7 +63,10 @@ jobs:
         run: |
           VERSION=$(grep -m1 '^version:' pubspec.yaml | sed -E 's/version:[[:space:]]*//; s/\+.*//')
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+          if [ "${{ steps.sign.outputs.ready }}" != "true" ]; then
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            echo "Kunci tanda tangan belum siap, gak dirilis."
+          elif git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
             echo "release=false" >> "$GITHUB_OUTPUT"
             echo "v$VERSION udah dirilis, cuma dicek."
           else
@@ -56,6 +78,9 @@ jobs:
         run: |
           flutter build apk --release --build-number=${{ github.run_number }}
           cp build/app/outputs/flutter-apk/app-release.apk "Nova-${{ steps.ver.outputs.version }}.apk"
+          # Bukti tanda tangan di log (sidik jari SHA-256 harus sama tiap rilis).
+          SIGNER="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          "$SIGNER" verify --print-certs "Nova-${{ steps.ver.outputs.version }}.apk" | grep -m1 "SHA-256" || true
 
       - name: Rilis APK
         if: steps.ver.outputs.release == 'true'

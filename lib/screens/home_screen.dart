@@ -152,9 +152,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('${songs.length} lagu.', style: disp(40, height: 0.98, spacing: -1.6)),
+                      Text('${songs.length} lagu.', style: disp(34, height: 1.0, spacing: -1.2)),
                       Text('Semuanya punya lu.',
-                          style: disp(40, height: 0.98, spacing: -1.6, color: Nv.accent)),
+                          style: disp(34, height: 1.0, spacing: -1.2, color: Nv.accent)),
                     ],
                   ),
                 ),
@@ -251,7 +251,9 @@ class _ResumeCard extends StatelessWidget {
     return ValueListenableBuilder<Song?>(
       valueListenable: audio.current,
       builder: (context, cur, _) {
-        final song = cur ?? library.byId(stats.lastSongId) ?? songs.first;
+        // Lagi ada lagu (diputar/dijeda) → udah ada di pemutar mini bawah, kartu ini gak perlu.
+        if (cur != null) return const SizedBox.shrink();
+        final song = library.byId(stats.lastSongId) ?? songs.first;
         final isCurrent = cur?.id == song.id;
         return StreamBuilder<bool>(
           stream: audio.player.playingStream,
@@ -340,28 +342,28 @@ class _Carousel extends StatelessWidget {
       children: [
         SectionHeader(title, trailing: '${songs.length}'),
         SizedBox(
-          height: 196,
+          height: 168,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 20),
             itemCount: songs.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (context, i) {
               final s = songs[i];
               return SizedBox(
-                width: 132,
+                width: 112,
                 child: Material(
                   type: MaterialType.transparency,
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                     onTap: () => playAndOpen(context, songs, i, from: from),
                     onLongPress: () => showSongActions(context, s),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Art(songId: s.id, size: 132, radius: 16),
+                        Art(songId: s.id, size: 112, radius: 14),
                         const SizedBox(height: 8),
-                        Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.title, w: 700)),
+                        Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.body, w: 700)),
                         const SizedBox(height: 2),
                         Text(
                           s.artist,

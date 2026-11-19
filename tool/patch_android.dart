@@ -444,7 +444,47 @@ void patchIcon() {
   stdout.writeln('+ ikon launcher headset + bintang');
 }
 
+/// Pasang kunci tanda tangan permanen kalau android/key.properties ada
+/// (ditulis CI dari secret NOVA_KEY_PASSWORD). Tanpa itu tetap pakai kunci debug.
+void patchSigning() {
+  if (!File('android/key.properties').existsSync()) {
+    stdout.writeln('- kunci tanda tangan: gak ada, pakai kunci debug');
+    return;
+  }
+  final f = File('android/app/build.gradle.kts');
+  var g = f.readAsStringSync();
+  if (g.contains('novaRelease')) return;
+  const props = """
+val novaKeyProps = java.util.Properties().apply {
+    rootProject.file("key.properties").inputStream().use { load(it) }
+}
+""";
+  g = g.replaceFirst('android {', '${props}\nandroid {');
+  const config = """
+    signingConfigs {
+        create("novaRelease") {
+            storeFile = file(novaKeyProps.getProperty("storeFile"))
+            storePassword = novaKeyProps.getProperty("storePassword")
+            keyAlias = novaKeyProps.getProperty("keyAlias")
+            keyPassword = novaKeyProps.getProperty("keyPassword")
+        }
+    }
+
+    buildTypes {""";
+  if (!g.contains('    buildTypes {')) throw StateError('build.gradle.kts: blok buildTypes gak ketemu');
+  g = g.replaceFirst('    buildTypes {', config);
+  final debugSign = RegExp(r'signingConfig\s*=\s*signingConfigs\.getByName\("debug"\)');
+  if (!debugSign.hasMatch(g)) throw StateError('build.gradle.kts: signingConfig debug gak ketemu');
+  g = g.replaceFirst(debugSign, 'signingConfig = signingConfigs.getByName("novaRelease")');
+  f.writeAsStringSync(g);
+  stdout.writeln('+ kunci tanda tangan permanen');
+}
+
 void main(List<String> args) {
+  if (args.contains('--sign')) {
+    patchSigning();
+    return;
+  }
   final manifest = File('android/app/src/main/AndroidManifest.xml');
   if (!manifest.existsSync()) {
     stderr.writeln('Folder android/ belum ada. Jalankan dulu:\n'
