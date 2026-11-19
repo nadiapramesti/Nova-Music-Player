@@ -1,4 +1,5 @@
 import 'cover_tint.dart';
+import 'equalizer.dart';
 import 'island_service.dart';
 import 'library_service.dart';
 import 'lyrics.dart';
@@ -7,6 +8,7 @@ import 'playlist_service.dart';
 import 'stats_service.dart';
 
 export 'cover_tint.dart';
+export 'equalizer.dart';
 export 'island_service.dart';
 export 'library_service.dart';
 export 'player_service.dart';
@@ -20,7 +22,8 @@ export 'transition.dart';
 // jadi aman karena init di main() jalan duluan.
 final stats = StatsService();
 final library = LibraryService();
-final audio = PlayerService(stats);
+final equalizer = EqService();
+final audio = PlayerService(stats, equalizer);
 final island = IslandService();
 final playlists = PlaylistService();
 final lyrics = LyricsService();

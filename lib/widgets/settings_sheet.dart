@@ -4,6 +4,7 @@ import '../demo/demo.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import 'controls.dart';
+import 'eq_sheet.dart';
 import 'song_actions.dart';
 import '../models.dart';
 
@@ -53,6 +54,18 @@ void showSettingsSheet(BuildContext context) {
                 options: [for (final s in transitionChoices) s == 0 ? 'Mati' : '$s dtk'],
                 selected: transitionChoices.indexOf(audio.fadeSeconds.value),
                 onSelect: (i) => audio.setFadeSeconds(transitionChoices[i]),
+              ),
+              const SizedBox(height: 10),
+              ListenableBuilder(
+                listenable: equalizer,
+                builder: (context, _) => ActionTile(
+                  icon: Icons.equalizer_rounded,
+                  label: 'Equalizer',
+                  trailing: equalizer.settings.enabled
+                      ? (equalizer.settings.preset == 'Custom' ? 'ATUR SENDIRI' : equalizer.settings.preset.toUpperCase())
+                      : 'MATI',
+                  onTap: () => showEqSheet(context),
+                ),
               ),
               const SizedBox(height: 22),
               Text('Pustaka', style: disp(TS.h2, spacing: -0.6)),

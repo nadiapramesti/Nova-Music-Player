@@ -24,6 +24,7 @@ Future<void> main() async {
     androidNotificationChannelName: 'Pemutar Nova',
     androidNotificationOngoing: true,
   );
+  await equalizer.init();
   await stats.init();
   await playlists.init();
   await island.init(audio, stats);

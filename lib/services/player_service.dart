@@ -11,13 +11,14 @@ import '../demo/demo.dart';
 import '../demo/silent_source.dart';
 import '../models.dart';
 import 'nova_shuffle.dart';
+import 'equalizer.dart';
 import 'resume.dart';
 import 'sleep_timer.dart';
 import 'transition.dart';
 import 'stats_service.dart';
 
 class PlayerService {
-  PlayerService(this._stats) {
+  PlayerService(this._stats, this._eq) {
     player.currentIndexStream.listen((i) {
       if (i == null || i < 0 || i >= _queue.length) return;
       _cur = i;
@@ -153,9 +154,13 @@ class PlayerService {
   }
 
   final StatsService _stats;
+  final EqService _eq;
   // Gangguan dari app lain diurus sendiri di [_listenFocus] (bawaan just_audio
   // cuma ngecilin suara kalau app lain minta "duck", kayak SW WA).
-  final AudioPlayer player = AudioPlayer(handleInterruptions: false);
+  late final AudioPlayer player = AudioPlayer(
+    handleInterruptions: false,
+    audioPipeline: AudioPipeline(androidAudioEffects: [_eq.eq]),
+  );
 
   final ValueNotifier<Song?> current = ValueNotifier<Song?>(null);
 
@@ -241,6 +246,8 @@ class PlayerService {
     );
     _queueChanged();
     await player.setAudioSource(_source!, initialIndex: index, initialPosition: startAt);
+    // Equalizer baru bisa diatur setelah pemutar siap.
+    unawaited(_eq.ready());
     // Gak di-await: future play() baru selesai pas lagu berhenti.
     if (autoplay) player.play();
   }
