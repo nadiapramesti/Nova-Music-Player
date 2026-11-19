@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../services/equalizer.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import 'controls.dart';
