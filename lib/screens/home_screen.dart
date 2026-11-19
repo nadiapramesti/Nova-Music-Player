@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models.dart';
 import '../services/services.dart';
@@ -21,7 +22,29 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  SortMode _sort = SortMode.terbaru;
+  /// Urutan terakhir dipilih. Disimpan di memori (biar gak balik ke awal kalau
+  /// layar dibangun ulang) dan di HP (biar tetap pas Nova dibuka lagi).
+  static SortMode? _remembered;
+  SortMode _sort = _remembered ?? SortMode.terbaru;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_remembered == null) _loadSort();
+  }
+
+  Future<void> _loadSort() async {
+    final p = await SharedPreferences.getInstance();
+    final saved = SortMode.values.where((m) => m.name == p.getString('homeSort')).firstOrNull;
+    if (saved != null && _remembered == null && mounted) {
+      setState(() => _sort = _remembered = saved);
+    }
+  }
+
+  Future<void> _setSort(SortMode m) async {
+    setState(() => _sort = _remembered = m);
+    (await SharedPreferences.getInstance()).setString('homeSort', m.name);
+  }
 
   static const _labels = {
     SortMode.terbaru: 'Terbaru',
@@ -37,8 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case SortMode.terlama:
         return list.reversed.toList();
       case SortMode.az:
-        list.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
-        return list;
+        return sortAz(list);
     }
   }
 
@@ -145,7 +167,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     children: [
                       for (final m in SortMode.values) ...[
-                        Pill(label: _labels[m]!, selected: _sort == m, onTap: () => setState(() => _sort = m)),
+                        Pill(label: _labels[m]!, selected: _sort == m, onTap: () => _setSort(m)),
                         const SizedBox(width: 6),
                       ],
                       Pill(

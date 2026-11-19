@@ -99,3 +99,27 @@ List<(String path, String name, int count)> folderSummary(List<Song> songs) {
     ..sort((a, b) => a.$2.toLowerCase().compareTo(b.$2.toLowerCase()));
   return out;
 }
+
+/// Urut A–Z ala app musik: gak peduli huruf besar/kecil, tanda baca di depan
+/// ("(Live)", "'Til"), atau angka 2 < 10; kalau judul sama, urut artis.
+List<Song> sortAz(List<Song> songs) {
+  String key(String s) => s.toLowerCase().replaceFirst(RegExp(r'^[^a-z0-9\u00c0-\uffff]+'), '');
+  int cmp(String a, String b) {
+    final re = RegExp(r'\d+|\D+');
+    final pa = re.allMatches(a).map((m) => m[0]!).toList();
+    final pb = re.allMatches(b).map((m) => m[0]!).toList();
+    for (var i = 0; i < pa.length && i < pb.length; i++) {
+      final na = int.tryParse(pa[i]), nb = int.tryParse(pb[i]);
+      final c = (na != null && nb != null) ? na.compareTo(nb) : pa[i].compareTo(pb[i]);
+      if (c != 0) return c;
+    }
+    return pa.length.compareTo(pb.length);
+  }
+
+  final list = [...songs];
+  list.sort((a, b) {
+    final c = cmp(key(a.title), key(b.title));
+    return c != 0 ? c : cmp(key(a.artist), key(b.artist));
+  });
+  return list;
+}
