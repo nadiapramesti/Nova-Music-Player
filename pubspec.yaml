@@ -1,7 +1,7 @@
 name: nova
 description: Nova — pemutar musik lokal. Offline, tanpa iklan, tanpa akun.
 publish_to: 'none'
-version: 1.2.0+6
+version: 1.2.1+7
 
 environment:
   sdk: ^3.5.0
@@ -14,10 +14,6 @@ dependencies:
   just_audio_background: ^0.0.1-beta.13
   permission_handler: ^11.3.1
   shared_preferences: ^2.3.2
-  flutter_web_auth_2: ^5.0.0
-  http: ^1.2.2
-  crypto: ^3.0.3
-  flutter_secure_storage: ^10.0.0
 
 dev_dependencies:
   flutter_test:
