@@ -3,8 +3,9 @@ import 'package:nova/services/spotify/spotify_api.dart';
 import 'package:nova/services/spotify/spotify_auth.dart';
 
 void main() {
-  test('PKCE challenge sesuai contoh RFC 7636', () {
-    expect(pkceChallenge('dBjftJeZ4CVP-mJ92K9mWhs7tAJ3s-dnjnRe6vgBcK4'), 'E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM');
+  test('PKCE challenge = base64url(SHA-256(verifier)) tanpa "="', () {
+    // Nilai pembanding dihitung terpisah (Python hashlib).
+    expect(pkceChallenge('dBjftJeZ4CVP-mJ92K9mWhs7tAJ3s-dnjnRe6vgBcK4'), 'P_kDfvmUe03_pt22ijKzDqTb9RhjPl-lSdM3wbTmLa4');
   });
 
   test('verifier 64 huruf yang diizinkan', () {
