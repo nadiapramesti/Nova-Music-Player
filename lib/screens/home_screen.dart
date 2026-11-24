@@ -154,7 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text('${songs.length} lagu.', style: disp(34, height: 1.0, spacing: -1.2)),
                       Text('Semuanya punya lu.',
-                          style: disp(34, height: 1.0, spacing: -1.2, color: Nv.accent)),
+                          style: disp(34, height: 1.0, spacing: -1.2, color: Nv.accent, italic: true)),
                     ],
                   ),
                 ),

@@ -207,7 +207,6 @@ void applySystemBars() {
 
 FontWeight _fw(double w) => FontWeight.values[((w / 100).round() - 1).clamp(0, 8)];
 
-/// Bricolage Grotesque (variable font): berat diatur lewat FontVariation.
 /// Skala ukuran huruf Nova. Semua teks pakai ini biar seragam.
 abstract final class TS {
   /// Info kecil di bawah judul (artis · album, keterangan).
@@ -234,20 +233,38 @@ abstract final class TS {
   static const double mono = 12;
 }
 
+/// Huruf Nova (gaya editorial, kayak sampul majalah musik):
+/// - judul (>= TS.h3): Instrument Serif — ramping & elegan, cuma satu ketebalan
+/// - teks lain: Instrument Sans (variable, tebal 400–700)
+/// Angka/label kecil tetap pakai [mono].
 TextStyle disp(
   double size, {
   double w = 800,
   Color? color,
   double? height,
   double spacing = 0,
+  bool italic = false,
 }) {
+  if (size >= TS.h3) {
+    return TextStyle(
+      fontFamily: 'InstrumentSerif',
+      // Serif ini kelihatan lebih kecil dari sans di ukuran yang sama.
+      fontSize: size * 1.16,
+      fontWeight: FontWeight.w400,
+      fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+      color: color ?? Nv.text,
+      height: height,
+      // Jarak rapat ala sans tebal bikin serif dempet: dilonggarin.
+      letterSpacing: spacing * 0.25,
+    );
+  }
+  final wt = w.clamp(400, 700).toDouble();
   return TextStyle(
-    fontFamily: 'Bricolage',
+    fontFamily: 'InstrumentSans',
     fontSize: size,
-    fontWeight: _fw(w),
-    // Bricolage punya sumbu "optical size": huruf kecil dibikin lebih lega & kebaca,
-    // huruf besar lebih rapat & tegas. Tanpa ini semua ukuran pakai gaya poster (96).
-    fontVariations: [FontVariation('wght', w), FontVariation('opsz', size.clamp(12, 96).toDouble())],
+    fontWeight: _fw(wt),
+    fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+    fontVariations: [FontVariation('wght', wt)],
     color: color ?? Nv.text,
     height: height,
     letterSpacing: spacing,
@@ -330,7 +347,7 @@ ThemeData buildTheme() {
     useMaterial3: true,
     brightness: Nv.p.brightness,
     scaffoldBackgroundColor: Nv.bg,
-    fontFamily: 'Bricolage',
+    fontFamily: 'InstrumentSans',
     colorScheme: ColorScheme.fromSeed(
       seedColor: Nv.accent,
       brightness: Nv.p.brightness,
