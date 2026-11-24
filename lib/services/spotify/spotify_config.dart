@@ -3,7 +3,7 @@
 //  Ambil dari https://developer.spotify.com/dashboard → app kamu → Settings.
 //  Client ID aman ditaruh di APK (pakai PKCE, gak ada client secret).
 // ============================================================================
-const String spotifyClientId = 'ISI_CLIENT_ID_SPOTIFY_DI_SINI';
+const String spotifyClientId = '2e649dbf25d542cba7ee2d82465952d9';
 
 /// Harus sama persis dengan Redirect URI di dashboard Spotify.
 const String spotifyRedirectUri = 'nova://spotify-callback';
