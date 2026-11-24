@@ -85,13 +85,12 @@ class _Frame extends StatelessWidget {
 
 /// Isi tengah buat loading / kosong / error: ikon dalam lingkaran kaca + teks.
 class _State extends StatelessWidget {
-  const _State({required this.icon, required this.title, required this.body, this.loading = false, this.action});
+  const _State({required this.icon, required this.title, required this.body, this.loading = false});
 
   final IconData icon;
   final String title;
   final String body;
   final bool loading;
-  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +116,6 @@ class _State extends StatelessWidget {
             Text(title, textAlign: TextAlign.center, style: disp(TS.h3, spacing: -0.4)),
             const SizedBox(height: 6),
             Text(body, textAlign: TextAlign.center, style: disp(TS.body, w: 500, color: Nv.muted, height: 1.45)),
-            if (action != null) ...[const SizedBox(height: 18), action!],
           ],
         ),
       ),
@@ -127,9 +125,9 @@ class _State extends StatelessWidget {
 
 /// Cover playlist dari Spotify (butuh internet); kalau gagal, kotak bergradasi.
 class _Cover extends StatelessWidget {
-  const _Cover({required this.url, this.size = 56});
+  const _Cover({required this.url});
   final String? url;
-  final double size;
+  static const double size = 56;
 
   @override
   Widget build(BuildContext context) {
@@ -203,31 +201,31 @@ class _SpotifyImportScreenState extends State<SpotifyImportScreen> {
         _stage = _Stage.ready;
       });
     } on SpotifyAuthException catch (e) {
-      if (mounted) setState(() => (_stage, _error) = (_Stage.loggedOut, e.message));
+      if (mounted) setState(() { _stage = _Stage.loggedOut; _error = e.message; });
     } on SpotifyApiException catch (e) {
       if (!mounted) return;
       final relogin = e.status == 401;
-      setState(() => (_stage, _error) = (relogin ? _Stage.loggedOut : _Stage.error, e.message));
+      setState(() { _stage = relogin ? _Stage.loggedOut : _Stage.error; _error = e.message; });
     } catch (_) {
-      if (mounted) setState(() => (_stage, _error) = (_Stage.error, 'Ada yang gak beres pas baca playlist. Coba lagi.'));
+      if (mounted) setState(() { _stage = _Stage.error; _error = 'Ada yang gak beres pas baca playlist. Coba lagi.'; });
     }
   }
 
   Future<void> _login() async {
-    setState(() => (_stage, _error) = (_Stage.signingIn, ''));
+    setState(() { _stage = _Stage.signingIn; _error = ''; });
     try {
       await spotifyAuth.login();
       if (mounted) await _load();
     } on SpotifyAuthException catch (e) {
-      if (mounted) setState(() => (_stage, _error) = (_Stage.loggedOut, e.cancelled ? '' : e.message));
+      if (mounted) setState(() { _stage = _Stage.loggedOut; _error = e.cancelled ? '' : e.message; });
     } catch (_) {
-      if (mounted) setState(() => (_stage, _error) = (_Stage.loggedOut, 'Login gagal. Cek internet terus coba lagi.'));
+      if (mounted) setState(() { _stage = _Stage.loggedOut; _error = 'Login gagal. Cek internet terus coba lagi.'; });
     }
   }
 
   Future<void> _logout() async {
     await spotifyAuth.logout();
-    if (mounted) setState(() => (_stage, _lists, _error) = (_Stage.loggedOut, const [], ''));
+    if (mounted) setState(() { _stage = _Stage.loggedOut; _lists = const []; _error = ''; });
   }
 
   @override
@@ -388,7 +386,7 @@ class _PreviewScreenState extends State<_PreviewScreen> {
   }
 
   Future<void> _run() async {
-    setState(() => (_loading, _error, _read) = (true, null, 0));
+    setState(() { _loading = true; _error = null; _read = 0; });
     try {
       final tracks = await spotifyApi.playlistTracks(
         widget.playlist.id,
@@ -405,11 +403,11 @@ class _PreviewScreenState extends State<_PreviewScreen> {
         _showMissing = r.matched.isEmpty && r.missing.isNotEmpty;
       });
     } on SpotifyAuthException catch (e) {
-      if (mounted) setState(() => (_loading, _error) = (false, e.message));
+      if (mounted) setState(() { _loading = false; _error = e.message; });
     } on SpotifyApiException catch (e) {
-      if (mounted) setState(() => (_loading, _error) = (false, e.message));
+      if (mounted) setState(() { _loading = false; _error = e.message; });
     } catch (_) {
-      if (mounted) setState(() => (_loading, _error) = (false, 'Ada yang gak beres pas baca lagu. Coba lagi.'));
+      if (mounted) setState(() { _loading = false; _error = 'Ada yang gak beres pas baca lagu. Coba lagi.'; });
     }
   }
 
