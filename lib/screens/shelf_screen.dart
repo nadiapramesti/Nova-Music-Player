@@ -6,6 +6,7 @@ import '../theme.dart';
 import '../widgets/controls.dart';
 import 'now_playing_screen.dart';
 import 'song_list_screen.dart';
+import 'spotify_import_screen.dart';
 import '../widgets/song_actions.dart';
 
 enum ShelfTab { album, artis, folder, playlist, favorit }
@@ -154,7 +155,20 @@ class _PlaylistShelf extends StatelessWidget {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
-          child: WideButton(label: 'Playlist baru', icon: Icons.add_rounded, onTap: () => _create(context)),
+          child: Row(
+            children: [
+              Expanded(child: WideButton(label: 'Playlist baru', icon: Icons.add_rounded, onTap: () => _create(context))),
+              const SizedBox(width: 8),
+              Expanded(
+                child: WideButton(
+                  label: 'Dari Spotify',
+                  icon: Icons.playlist_add_rounded,
+                  primary: false,
+                  onTap: () => SpotifyImportScreen.open(context),
+                ),
+              ),
+            ],
+          ),
         ),
         if (items.isEmpty)
           Padding(

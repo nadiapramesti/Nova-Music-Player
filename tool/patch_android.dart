@@ -4,6 +4,8 @@
 import 'dart:io';
 
 const _perms = [
+  // Import playlist Spotify (login & baca daftar lagu).
+  '<uses-permission android:name="android.permission.INTERNET"/>',
   '<uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>',
   '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>',
   '<uses-permission android:name="android.permission.WAKE_LOCK"/>',
@@ -14,6 +16,20 @@ const _perms = [
   // Opsional, diminta lewat tombol: baca file .lrc di samping lagu (Android 11+).
   '<uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>',
 ];
+
+// Login Spotify: halaman login balik ke Nova lewat nova://spotify-callback.
+const _webAuthCallback = '''
+        <activity
+            android:name="com.linusu.flutter_web_auth_2.CallbackActivity"
+            android:exported="true">
+            <intent-filter android:label="flutter_web_auth_2">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="nova"/>
+            </intent-filter>
+        </activity>
+''';
 
 const _service = '''
         <service
@@ -505,6 +521,10 @@ void main(List<String> args) {
   if (!m.contains('com.ryanheise.audioservice.AudioService')) {
     m = m.replaceFirst('</application>', '$_service    </application>');
     stdout.writeln('+ service background');
+  }
+  if (!m.contains('flutter_web_auth_2.CallbackActivity')) {
+    m = m.replaceFirst('</application>', '$_webAuthCallback    </application>');
+    stdout.writeln('+ callback login Spotify');
   }
   m = m.replaceFirst(RegExp(r'android:label="[^"]*"'), 'android:label="Nova"');
   manifest.writeAsStringSync(m);
