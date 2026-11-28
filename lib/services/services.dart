@@ -1,3 +1,4 @@
+import 'cast/cast_service.dart';
 import 'cover_tint.dart';
 import 'equalizer.dart';
 import 'island_service.dart';
@@ -7,6 +8,7 @@ import 'player_service.dart';
 import 'playlist_service.dart';
 import 'stats_service.dart';
 
+export 'cast/cast_service.dart';
 export 'cover_tint.dart';
 export 'equalizer.dart';
 export 'island_service.dart';
@@ -28,3 +30,4 @@ final island = IslandService();
 final playlists = PlaylistService();
 final lyrics = LyricsService();
 final coverTint = CoverTintService(audio);
+final cast = CastService(audio, library);

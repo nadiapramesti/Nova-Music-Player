@@ -289,6 +289,27 @@ class MainActivity : AudioServiceActivity() {
             }
         }
 
+        // Cast ke TV: cari Chromecast/Google TV di WiFi (mDNS) & tahan WiFi tetap nyala.
+        val castChannel = MethodChannel(messenger, "nova/cast")
+        NovaCast.channel = castChannel
+        castChannel.setMethodCallHandler { call, result ->
+            when (call.method) {
+                "start" -> {
+                    NovaCast.start(applicationContext)
+                    result.success(null)
+                }
+                "stop" -> {
+                    NovaCast.stop()
+                    result.success(null)
+                }
+                "wifiLock" -> {
+                    NovaCast.wifiLock(applicationContext, call.arguments == true)
+                    result.success(null)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
         val overlayChannel = MethodChannel(messenger, "nova/overlay")
         NovaOverlay.channel = overlayChannel
         overlayChannel.setMethodCallHandler { call, result ->
@@ -388,6 +409,109 @@ class NovaIslandService : AccessibilityService() {
 }
 
 /** Baca lagu & cover dari MediaStore. */
+/** Cari perangkat Cast (_googlecast._tcp) lewat NsdManager. */
+object NovaCast {
+    var channel: MethodChannel? = null
+    private val main = Handler(Looper.getMainLooper())
+    private var nsd: android.net.nsd.NsdManager? = null
+    private var listener: android.net.nsd.NsdManager.DiscoveryListener? = null
+    private val queue = ArrayDeque<android.net.nsd.NsdServiceInfo>()
+    private var resolving = false
+    private var lock: android.net.wifi.WifiManager.WifiLock? = null
+
+    fun start(ctx: Context) {
+        stop()
+        val m = ctx.getSystemService(Context.NSD_SERVICE) as android.net.nsd.NsdManager
+        nsd = m
+        val l = object : android.net.nsd.NsdManager.DiscoveryListener {
+            override fun onDiscoveryStarted(serviceType: String) {}
+            override fun onDiscoveryStopped(serviceType: String) {}
+            override fun onStartDiscoveryFailed(serviceType: String, errorCode: Int) {
+                main.post { channel?.invokeMethod("error", errorCode) }
+            }
+            override fun onStopDiscoveryFailed(serviceType: String, errorCode: Int) {}
+            override fun onServiceFound(info: android.net.nsd.NsdServiceInfo) {
+                synchronized(queue) { queue.addLast(info) }
+                resolveNext()
+            }
+            override fun onServiceLost(info: android.net.nsd.NsdServiceInfo) {
+                main.post { channel?.invokeMethod("lost", info.serviceName) }
+            }
+        }
+        listener = l
+        try {
+            m.discoverServices("_googlecast._tcp", android.net.nsd.NsdManager.PROTOCOL_DNS_SD, l)
+        } catch (e: Exception) {
+            main.post { channel?.invokeMethod("error", -1) }
+        }
+    }
+
+    fun stop() {
+        val l = listener
+        listener = null
+        if (l != null) try { nsd?.stopServiceDiscovery(l) } catch (e: Exception) {}
+        synchronized(queue) { queue.clear() }
+        resolving = false
+    }
+
+    /** Resolve satu-satu (Android lama nolak resolve barengan). */
+    @Suppress("DEPRECATION")
+    private fun resolveNext() {
+        val m = nsd ?: return
+        val next: android.net.nsd.NsdServiceInfo
+        synchronized(queue) {
+            if (resolving || queue.isEmpty()) return
+            resolving = true
+            next = queue.removeFirst()
+        }
+        try {
+            m.resolveService(next, object : android.net.nsd.NsdManager.ResolveListener {
+                override fun onResolveFailed(info: android.net.nsd.NsdServiceInfo, errorCode: Int) {
+                    resolving = false
+                    resolveNext()
+                }
+                override fun onServiceResolved(info: android.net.nsd.NsdServiceInfo) {
+                    val attrs = info.attributes
+                    fun attr(k: String) = attrs[k]?.let { String(it, Charsets.UTF_8) }
+                    val host = info.host?.hostAddress
+                    if (host != null) {
+                        val data = mapOf(
+                            "id" to (attr("id") ?: info.serviceName),
+                            "name" to (attr("fn") ?: info.serviceName),
+                            "model" to (attr("md") ?: ""),
+                            "service" to info.serviceName,
+                            "host" to host,
+                            "port" to info.port,
+                        )
+                        main.post { channel?.invokeMethod("found", data) }
+                    }
+                    resolving = false
+                    resolveNext()
+                }
+            })
+        } catch (e: Exception) {
+            resolving = false
+            resolveNext()
+        }
+    }
+
+    /** Selama nge-cast, WiFi jangan tidur walau layar mati (TV ngambil lagu dari HP). */
+    @Suppress("DEPRECATION")
+    fun wifiLock(ctx: Context, on: Boolean) {
+        if (on) {
+            if (lock?.isHeld == true) return
+            val wm = ctx.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+            lock = wm.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "nova:cast").apply {
+                setReferenceCounted(false)
+                acquire()
+            }
+        } else {
+            try { lock?.release() } catch (e: Exception) {}
+            lock = null
+        }
+    }
+}
+
 object NovaMedia {
     val io = Executors.newFixedThreadPool(3)
 

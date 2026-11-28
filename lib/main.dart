@@ -30,6 +30,7 @@ Future<void> main() async {
   await island.init(audio, stats);
   await audio.initPlayback();
   await coverTint.init();
+  cast.init();
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   // Produksi selalu gelap. Mode demo bisa mulai terang: --dart-define=DEMO_THEME=light

@@ -7,6 +7,11 @@ const _perms = [
   '<uses-permission android:name="android.permission.READ_MEDIA_AUDIO"/>',
   // Hapus lagu di Android 9 ke bawah (Android 10+ pakai dialog konfirmasi bawaan).
   '<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28"/>',
+  // Cast ke TV: cari Chromecast di WiFi & kirim lagu dari HP ke TV (jaringan lokal).
+  '<uses-permission android:name="android.permission.INTERNET"/>',
+  '<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>',
+  '<uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>',
+  '<uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE"/>',
   '<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>',
   '<uses-permission android:name="android.permission.WAKE_LOCK"/>',
   '<uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>',

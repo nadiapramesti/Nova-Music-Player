@@ -166,6 +166,9 @@ class PlayerService {
   final ValueNotifier<Song?> current = ValueNotifier<Song?>(null);
 
   /// Timer tidur (berhenti otomatis).
+  /// Dipakai saat nge-cast: HP tetap muter (diam) sebagai patokan antrean & posisi.
+  void setCastMute(bool muted) => _volume.setCastMute(muted);
+
   late final SleepTimer sleep = SleepTimer(pause: player.pause, setVolume: _volume.setSleep);
 
   /// Asal antrean, misal "Daftar putar · Terbaru" atau nama album.

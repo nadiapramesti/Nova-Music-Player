@@ -10,6 +10,7 @@ import '../widgets/art.dart';
 import '../services/sleep_timer.dart';
 import '../widgets/controls.dart';
 import '../widgets/deck.dart' show novaArtHero;
+import '../widgets/cast_sheet.dart';
 import '../widgets/lyrics_view.dart';
 import '../widgets/queue_sheet.dart';
 import '../widgets/sleep_sheet.dart';
@@ -92,7 +93,9 @@ class NowPlayingScreen extends StatelessWidget {
                           ),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
+                      const CastChip(),
+                      const SizedBox(height: 12),
                       _Panel(song: song),
                     ],
                   ),

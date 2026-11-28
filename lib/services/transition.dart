@@ -30,10 +30,16 @@ class VolumeMixer {
   VolumeMixer(this._set);
   final FutureOr<void> Function(double volume) _set;
 
-  double _sleep = 1, _fade = 1;
+  double _sleep = 1, _fade = 1, _cast = 1;
   double _last = -1;
 
-  double get value => _sleep * _fade;
+  double get value => _sleep * _fade * _cast;
+
+  /// Lagi nge-cast ke TV: suara HP dibisuin (pemutar HP tetap jalan buat ngatur antrean).
+  void setCastMute(bool muted) {
+    _cast = muted ? 0 : 1;
+    _push();
+  }
 
   void setSleep(double v) {
     _sleep = v.clamp(0.0, 1.0);
