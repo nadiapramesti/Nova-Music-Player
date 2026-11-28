@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../demo/demo.dart';
 import '../library_service.dart';
@@ -53,6 +54,16 @@ class CastService extends ChangeNotifier {
 
   bool get casting => state == CastState.casting;
 
+  /// Volume TV (0..1), null kalau belum tau.
+  double? tvVolume;
+
+  /// Atur volume TV dari slider / tombol volume HP.
+  void setTvVolume(double v) {
+    tvVolume = v.clamp(0.0, 1.0);
+    _client?.setVolume(tvVolume!);
+    notifyListeners();
+  }
+
   void init() {
     _ch.setMethodCallHandler((call) async {
       switch (call.method) {
@@ -70,6 +81,10 @@ class CastService extends ChangeNotifier {
         case 'lost':
           // NSD kadang "hilang-muncul"; daftar dibiarin, dibersihin pas scan ulang.
           break;
+        case 'volumeKey':
+          // Tombol volume HP selama nge-cast (pas Nova kebuka) → volume TV.
+          final up = call.arguments == 1;
+          setTvVolume((tvVolume ?? 0.5) + (up ? 0.05 : -0.05));
         case 'error':
           error = 'Gak bisa nyari TV. Pastiin WiFi nyala.';
           scanning = false;
@@ -117,6 +132,12 @@ class CastService extends ChangeNotifier {
       await client.connect();
       _client = client;
       unawaited(_ch.invokeMethod('wifiLock', true));
+      unawaited(_ch.invokeMethod('volumeKeys', true));
+      client.onVolume = (v) {
+        tvVolume = v;
+        notifyListeners();
+      };
+      _remember(d);
       _audio.setCastMute(true);
       _hook(client);
       state = CastState.casting;
@@ -132,6 +153,7 @@ class CastService extends ChangeNotifier {
 
   /// Balik muter di HP, dari posisi yang sama.
   Future<void> disconnect() async {
+    _forget();
     final c = _client;
     _client = null;
     await c?.stop();
@@ -155,8 +177,10 @@ class CastService extends ChangeNotifier {
     _loadedId = null;
     _tv = null;
     _audio.setCastMute(false);
+    tvVolume = null;
     try {
       await _ch.invokeMethod('wifiLock', false);
+      await _ch.invokeMethod('volumeKeys', false);
     } catch (_) {}
     state = CastState.idle;
     notifyListeners();
@@ -174,10 +198,15 @@ class CastService extends ChangeNotifier {
     }));
 
     // Loncat posisi di HP (geser seek bar, tap lirik) → TV ikut.
+    // Lagu yang sama keulang (mode ulang 1 lagu) → TV muter ulang dari awal.
     _subs.add(_audio.player.positionDiscontinuityStream.listen((d) {
-      if (d.reason == PositionDiscontinuityReason.seek && !_loading && _loadedId == _audio.current.value?.id) {
+      if (_loading || _loadedId != _audio.current.value?.id) return;
+      if (d.reason == PositionDiscontinuityReason.seek) {
         _lastCommand = DateTime.now();
         client.seek(_audio.player.position);
+      } else if (d.reason == PositionDiscontinuityReason.autoAdvance) {
+        _loadedId = null;
+        _loadCurrent();
       }
     }));
 
@@ -189,6 +218,11 @@ class CastService extends ChangeNotifier {
       // Dijeda / diputar pakai remote TV → HP ikut.
       if (s.state == 'PAUSED' && _audio.player.playing) _audio.player.pause();
       if (s.state == 'PLAYING' && !_audio.player.playing) _audio.player.play();
+      // TV duluan selesai (HP biasanya beda sedetik-dua): HP yang nentuin lanjut ke mana.
+      if (s.state == 'IDLE' && s.idleReason == 'FINISHED' && _loadedId == _audio.current.value?.id) {
+        _onTvFinished();
+        return;
+      }
       if (s.state == 'IDLE' && s.idleReason == 'ERROR') {
         error = 'TV gagal muter lagu ini (format gak didukung?). Lanjut ke lagu berikutnya.';
         notifyListeners();
@@ -211,9 +245,60 @@ class CastService extends ChangeNotifier {
     client.closed.then((_) {
       if (_client == client) {
         error = 'Sambungan ke ${device?.name ?? 'TV'} putus. Lanjut muter di HP.';
+        _forget();
         _teardown();
       }
     });
+  }
+
+  // ---- Nyambung lagi otomatis ----
+  // Kalau Nova ketutup pas lagi nge-cast, pas dibuka lagi Nova nyari TV yang sama
+  // & nyambung sendiri. Putus manual / koneksi hilang = gak nyambung otomatis.
+
+  Future<void> _remember(CastDevice d) async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString('castLast', '${d.id}\n${d.name}');
+  }
+
+  Future<void> _forget() async {
+    final p = await SharedPreferences.getInstance();
+    await p.remove('castLast');
+  }
+
+  /// Dipanggil sekali setelah antrean terakhir dipulihin.
+  Future<void> resumeIfNeeded() async {
+    if (kDemo || state != CastState.idle) return;
+    final last = (await SharedPreferences.getInstance()).getString('castLast');
+    if (last == null) return;
+    final id = last.split('\n').first;
+    await startScan();
+    final deadline = DateTime.now().add(const Duration(seconds: 15));
+    while (DateTime.now().isBefore(deadline) && state == CastState.idle) {
+      final d = devices[id];
+      if (d != null) {
+        await stopScan();
+        await connect(d);
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+    await stopScan();
+    if (state == CastState.idle) await _forget(); // TV udah mati / gak ketemu
+  }
+
+  Future<void> _onTvFinished() async {
+    final p = _audio.player;
+    _lastCommand = DateTime.now();
+    if (p.loopMode == LoopMode.one) {
+      _loadedId = null;
+      await p.seek(Duration.zero);
+      await _loadCurrent();
+    } else if (p.hasNext) {
+      await p.seekToNext(); // lagu ganti → otomatis dikirim ke TV
+    } else {
+      await p.pause();
+      await p.seek(Duration.zero);
+    }
   }
 
   Future<void> _loadCurrent() async {

@@ -131,6 +131,33 @@ class _CastBodyState extends State<_CastBody> {
               ),
             if (cast.state == CastState.casting && cast.device != null && list.every((d) => d.id != cast.device!.id))
               _DeviceRow(icon: Icons.tv_rounded, name: cast.device!.name, sub: 'Lagi muter di sini', selected: true),
+            if (cast.casting) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.volume_down_rounded, size: 20, color: Nv.muted),
+                  Expanded(
+                    child: SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                        trackHeight: 4,
+                        activeTrackColor: Nv.accent,
+                        inactiveTrackColor: Nv.track,
+                        thumbColor: Nv.text,
+                        overlayColor: Nv.accentSoft,
+                      ),
+                      child: Slider(
+                        value: (cast.tvVolume ?? 0.5).clamp(0.0, 1.0),
+                        onChanged: cast.setTvVolume,
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.volume_up_rounded, size: 20, color: Nv.muted),
+                ],
+              ),
+              Text('Volume TV · tombol volume HP juga bisa selama Nova kebuka',
+                  style: disp(TS.caption, w: 500, color: Nv.muted)),
+              const SizedBox(height: 6),
+            ],
             if (cast.error != null) ...[
               const SizedBox(height: 4),
               Text(cast.error!, style: disp(TS.caption, w: 600, color: Nv.danger, height: 1.35)),

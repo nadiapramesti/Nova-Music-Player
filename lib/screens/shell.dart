@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../demo/demo.dart';
@@ -40,6 +42,7 @@ class _ShellState extends State<Shell> {
         _startDemoPlayback();
       } else {
         await audio.restoreLast(library.songs);
+        unawaited(cast.resumeIfNeeded());
       }
     });
   }

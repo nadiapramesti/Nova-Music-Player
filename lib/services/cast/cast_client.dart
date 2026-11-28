@@ -39,6 +39,10 @@ class CastClient {
   final _pending = <int, Completer<Map<String, dynamic>>>{};
 
   final _status = StreamController<CastMediaStatus>.broadcast();
+
+  /// Volume TV terakhir (0..1), dari RECEIVER_STATUS.
+  double? volume;
+  void Function(double volume)? onVolume;
   final _closed = Completer<void>();
 
   Stream<CastMediaStatus> get status => _status.stream;
@@ -177,6 +181,11 @@ class CastClient {
       }
     }
     if (m.namespace == _nsRecv && type == 'RECEIVER_STATUS') {
+      final vol = ((j['status'] as Map?)?['volume'] as Map?)?['level'];
+      if (vol is num) {
+        volume = vol.toDouble();
+        onVolume?.call(volume!);
+      }
       // Pemutar di TV ditutup dari luar (mis. pindah input / app lain dibuka).
       final apps = (j['status'] as Map?)?['applications'];
       if (_transport != null && (apps is! List || !apps.any((a) => a is Map && a['transportId'] == _transport))) {

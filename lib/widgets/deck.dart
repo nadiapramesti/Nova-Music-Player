@@ -117,12 +117,31 @@ class _NowRow extends StatelessWidget {
                     children: [
                       Text(song.title,
                           maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.body, w: 700)),
-                      StreamBuilder<Duration>(
-                        stream: audio.player.positionStream,
-                        builder: (context, snap) => Text(
-                          '${fmt(snap.data ?? Duration.zero)} / ${fmt(song.duration)}',
-                          style: mono(TS.label, w: 500),
-                        ),
+                      ListenableBuilder(
+                        listenable: cast,
+                        builder: (context, _) => cast.casting
+                            // Lagi di TV: kasih tanda biar gak bingung kenapa HP diam.
+                            ? Row(
+                                children: [
+                                  Icon(Icons.cast_connected_rounded, size: 13, color: Nv.accent),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      'DI ${(cast.device?.name ?? 'TV').toUpperCase()}',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: mono(TS.label, w: 500, color: Nv.accent),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : StreamBuilder<Duration>(
+                                stream: audio.player.positionStream,
+                                builder: (context, snap) => Text(
+                                  '${fmt(snap.data ?? Duration.zero)} / ${fmt(song.duration)}',
+                                  style: mono(TS.label, w: 500),
+                                ),
+                              ),
                       ),
                     ],
                   ),
