@@ -13,20 +13,42 @@ Future<T?> showGlassSheet<T>(BuildContext context, Widget Function(BuildContext)
     context: context,
     sheetAnimationStyle: Motion.sheet,
     isScrollControlled: true,
-    builder: (context) => Padding(
-      padding: EdgeInsets.fromLTRB(
-        8,
-        0,
-        8,
-        MediaQuery.of(context).padding.bottom + 8 + MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Glass(
-        strong: true,
-        radius: 28,
-        padding: const EdgeInsets.fromLTRB(20, 18, 20, 16),
-        child: builder(context),
-      ),
-    ),
+    barrierColor: Colors.black.withAlpha(150),
+    // Tablet: lembar gak melebar sepenuh layar, tetap enak dibaca di tengah.
+    constraints: const BoxConstraints(maxWidth: 560),
+    builder: (context) {
+      final mq = MediaQuery.of(context);
+      return Padding(
+        padding: EdgeInsets.fromLTRB(8, 0, 8, mq.padding.bottom + 8 + mq.viewInsets.bottom),
+        child: ConstrainedBox(
+          // Jangan sampai nabrak status bar: sisain ruang di atas.
+          constraints: BoxConstraints(maxHeight: mq.size.height - mq.padding.top - mq.viewInsets.bottom - 40),
+          child: Glass(
+            strong: true,
+            radius: 28,
+            // Hampir solid: cover & warna di belakang gak tembus jadi bercak.
+            color: Nv.bg.withAlpha(Nv.isLight ? 245 : 238),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 8),
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(color: Nv.line, borderRadius: BorderRadius.circular(2)),
+                ),
+                Flexible(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 14, 20, 16),
+                    child: builder(context),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    },
   );
 }
 

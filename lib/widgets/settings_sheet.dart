@@ -9,119 +9,153 @@ import 'song_actions.dart';
 import '../models.dart';
 
 void showSettingsSheet(BuildContext context) {
-  showModalBottomSheet<void>(
-    context: context,
-    sheetAnimationStyle: Motion.sheet,
-    isScrollControlled: true,
-    builder: (context) => Padding(
-      padding: EdgeInsets.fromLTRB(8, 0, 8, MediaQuery.of(context).padding.bottom + 8),
-      child: Glass(
-        strong: true,
-        radius: 28,
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-        child: SingleChildScrollView(child: ListenableBuilder(
-          listenable: Listenable.merge([island, library, coverTint, audio.fadeSeconds]),
-          builder: (context, _) => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('PENGATURAN', style: mono(TS.label, spacing: 1.2)),
-              const SizedBox(height: 4),
-              Text('Tampilan', style: disp(TS.h2, spacing: -0.6)),
-              const SizedBox(height: 14),
+  showGlassSheet<void>(context, (sheet) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([island, library, coverTint, audio.fadeSeconds, equalizer]),
+      builder: (context, _) => Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Pengaturan', style: disp(TS.h2, spacing: -0.6)),
+          const _Label('Tampilan'),
+          _Group(children: [
+            _Toggle(
+              title: 'Warna ikut cover',
+              body: 'Aksen berubah ngikutin cover lagu.',
+              value: coverTint.enabled,
+              onChanged: coverTint.setEnabled,
+            ),
+            if (kDemo)
               _Toggle(
-                title: 'Warna ikut cover',
-                body: 'Warna aksen Nova berubah ngikutin cover lagu yang diputar. '
-                    'Cover hitam-putih tetap pakai biru Nova.',
-                value: coverTint.enabled,
-                onChanged: coverTint.setEnabled,
+                title: 'Tema terang',
+                body: 'Cuma ada di mode demo.',
+                value: Nv.isLight,
+                onChanged: (v) => setPalette(v ? Palette.light : Palette.dark),
               ),
-              if (kDemo) ...[
-                const SizedBox(height: 10),
-                _Toggle(
-                  title: 'Tema terang',
-                  body: 'Buat perbandingan screenshot. Cuma ada di mode demo; versi biasa selalu gelap.',
-                  value: Nv.isLight,
-                  onChanged: (v) => setPalette(v ? Palette.light : Palette.dark),
-                ),
-              ],
-              const SizedBox(height: 22),
-              Text('Pemutaran', style: disp(TS.h2, spacing: -0.6)),
-              const SizedBox(height: 14),
-              _Choices(
-                title: 'Transisi halus',
-                body: 'Suara pelan turun di akhir lagu lalu pelan naik di lagu berikutnya, '
-                    'biar pindah lagu gak kaget.',
-                options: [for (final s in transitionChoices) s == 0 ? 'Mati' : '$s dtk'],
-                selected: transitionChoices.indexOf(audio.fadeSeconds.value),
-                onSelect: (i) => audio.setFadeSeconds(transitionChoices[i]),
-              ),
-              const SizedBox(height: 10),
-              ListenableBuilder(
-                listenable: equalizer,
-                builder: (context, _) => ActionTile(
-                  icon: Icons.equalizer_rounded,
-                  label: 'Equalizer',
-                  trailing: equalizer.settings.enabled
-                      ? (equalizer.settings.preset == 'Custom' ? 'ATUR SENDIRI' : equalizer.settings.preset.toUpperCase())
-                      : 'MATI',
-                  onTap: () => showEqSheet(context),
-                ),
-              ),
-              const SizedBox(height: 22),
-              Text('Pustaka', style: disp(TS.h2, spacing: -0.6)),
-              const SizedBox(height: 14),
-              ActionTile(
-                icon: Icons.folder_off_outlined,
-                label: 'Folder yang disembunyikan',
-                trailing: library.hiddenFolders.isEmpty ? 'TIDAK ADA' : '${library.hiddenFolders.length} FOLDER',
-                onTap: () => showHiddenFoldersSheet(context),
-              ),
-              const SizedBox(height: 22),
-              Text('Cadangan', style: disp(TS.h2, spacing: -0.6)),
-              const SizedBox(height: 4),
-              Text(
-                'Playlist, favorit, info lagu yang diubah, dan pengaturan. '
-                'Simpan dulu sebelum hapus-pasang Nova.',
-                style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.35),
-              ),
-              const SizedBox(height: 12),
-              ActionTile(
-                icon: Icons.save_alt_rounded,
-                label: 'Simpan cadangan',
-                onTap: () => _exportBackup(context),
-              ),
-              ActionTile(
-                icon: Icons.restore_rounded,
-                label: 'Pulihkan dari cadangan',
-                onTap: () => _importBackup(context),
-              ),
-              const SizedBox(height: 22),
-              Text('Pulau di notch', style: disp(TS.h2, spacing: -0.6)),
-              const SizedBox(height: 14),
-              _Toggle(
-                title: 'Pulau di luar Nova',
-                body: 'Pil lagu muncul di area kamera pas lu buka app lain, lalu ngumpet sendiri '
-                    'jadi garis kecil. Tap = kartu lagu, tahan = buka Nova.',
-                value: island.outside,
-                onChanged: island.setOutside,
-              ),
-              const SizedBox(height: 10),
-              _Toggle(
-                title: 'Juga tampil di dalam Nova',
-                body: 'Biasanya gak perlu, info lagunya udah ada di pemutar mini bawah.',
-                value: island.inApp,
-                onChanged: island.setInApp,
-              ),
-            ],
-          ),
-        )),
+          ]),
+          const _Label('Pemutaran'),
+          _Group(children: [
+            _Choices(
+              title: 'Transisi halus',
+              body: 'Suara turun-naik pelan pas ganti lagu.',
+              options: [for (final s in transitionChoices) s == 0 ? 'Mati' : '$s dtk'],
+              selected: transitionChoices.indexOf(audio.fadeSeconds.value),
+              onSelect: (i) => audio.setFadeSeconds(transitionChoices[i]),
+            ),
+            _NavRow(
+              icon: Icons.equalizer_rounded,
+              label: 'Equalizer',
+              value: equalizer.settings.enabled
+                  ? (equalizer.settings.preset == 'Custom' ? 'Atur sendiri' : equalizer.settings.preset)
+                  : 'Mati',
+              onTap: () => showEqSheet(context),
+            ),
+          ]),
+          const _Label('Pustaka & cadangan'),
+          _Group(children: [
+            _NavRow(
+              icon: Icons.folder_off_outlined,
+              label: 'Folder disembunyikan',
+              value: library.hiddenFolders.isEmpty ? 'Tidak ada' : '${library.hiddenFolders.length} folder',
+              onTap: () => showHiddenFoldersSheet(context),
+            ),
+            _NavRow(icon: Icons.save_alt_rounded, label: 'Simpan cadangan', onTap: () => _exportBackup(context)),
+            _NavRow(icon: Icons.restore_rounded, label: 'Pulihkan cadangan', onTap: () => _importBackup(context)),
+          ]),
+          const _Label('Pulau di notch'),
+          _Group(children: [
+            _Toggle(
+              title: 'Di luar Nova',
+              body: 'Muncul di area kamera, lalu ngumpet sendiri.',
+              value: island.outside,
+              onChanged: island.setOutside,
+            ),
+            _Toggle(
+              title: 'Juga di dalam Nova',
+              body: 'Biasanya gak perlu, udah ada pemutar mini.',
+              value: island.inApp,
+              onChanged: island.setInApp,
+            ),
+          ]),
+        ],
       ),
-    ),
-  );
+    );
+  });
 }
 
-/// Kartu pengaturan dengan beberapa pilihan (tombol sejajar).
+/// Judul kecil tiap bagian (kapital mono), biar daftar pengaturan ringkas & rapi.
+class _Label extends StatelessWidget {
+  const _Label(this.text);
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(4, 18, 4, 8),
+        child: Text(text.toUpperCase(), style: mono(TS.label, spacing: 1.2)),
+      );
+}
+
+/// Satu kartu berisi beberapa baris, dipisah garis tipis.
+class _Group extends StatelessWidget {
+  const _Group({required this.children});
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Nv.chip,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Nv.line),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) Divider(height: 1, thickness: 1, indent: 16, endIndent: 16, color: Nv.line),
+            children[i],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Baris yang buka layar lain: ikon, label, nilai sekarang, panah.
+class _NavRow extends StatelessWidget {
+  const _NavRow({required this.icon, required this.label, required this.onTap, this.value});
+  final IconData icon;
+  final String label;
+  final String? value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 13, 10, 13),
+          child: Row(
+            children: [
+              Icon(icon, size: 20, color: Nv.text),
+              const SizedBox(width: 12),
+              Expanded(child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.title, w: 600))),
+              if (value != null) ...[
+                Text(value!, style: disp(TS.caption, w: 500, color: Nv.muted)),
+                const SizedBox(width: 4),
+              ],
+              Icon(Icons.chevron_right_rounded, size: 20, color: Nv.muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Baris dengan beberapa pilihan (tombol sejajar).
 class _Choices extends StatelessWidget {
   const _Choices({
     required this.title,
@@ -139,20 +173,19 @@ class _Choices extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-      decoration: BoxDecoration(color: Nv.chip, borderRadius: BorderRadius.circular(18)),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 13, 16, 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: disp(TS.title, w: 700)),
-          const SizedBox(height: 3),
-          Text(body, style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.35)),
-          const SizedBox(height: 12),
+          Text(title, style: disp(TS.title, w: 600)),
+          const SizedBox(height: 2),
+          Text(body, style: disp(TS.caption, w: 500, color: Nv.muted)),
+          const SizedBox(height: 10),
           Row(
             children: [
               for (var i = 0; i < options.length; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
+                if (i > 0) const SizedBox(width: 6),
                 Expanded(child: _ChoiceButton(label: options[i], on: i == selected, onTap: () => onSelect(i))),
               ],
             ],
@@ -174,23 +207,22 @@ class _ChoiceButton extends StatelessWidget {
     return Material(
       color: on ? Nv.accent : Nv.glass,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(11),
         side: BorderSide(color: on ? Nv.accent : Nv.line),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(11),
         onTap: onTap,
         child: SizedBox(
-          height: 40,
-          child: Center(
-            child: Text(label, style: disp(TS.body, w: 700, color: on ? Nv.onAccent : Nv.text)),
-          ),
+          height: 36,
+          child: Center(child: Text(label, style: disp(TS.body, w: 700, color: on ? Nv.onAccent : Nv.text))),
         ),
       ),
     );
   }
 }
 
+/// Baris nyala/mati: judul + keterangan satu baris + saklar.
 class _Toggle extends StatelessWidget {
   const _Toggle({required this.title, required this.body, required this.value, required this.onChanged});
 
@@ -202,33 +234,34 @@ class _Toggle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Nv.chip,
-      borderRadius: BorderRadius.circular(18),
+      type: MaterialType.transparency,
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
         onTap: () => onChanged(!value),
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 10, 12),
+          padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
           child: Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: disp(TS.title, w: 700)),
-                    const SizedBox(height: 3),
-                    Text(body, style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.35)),
+                    Text(title, style: disp(TS.title, w: 600)),
+                    const SizedBox(height: 2),
+                    Text(body, style: disp(TS.caption, w: 500, color: Nv.muted, height: 1.3)),
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              Switch(
-                value: value,
-                onChanged: onChanged,
-                activeThumbColor: Nv.onAccent,
-                activeTrackColor: Nv.accent,
-                inactiveThumbColor: Nv.muted,
-                inactiveTrackColor: Nv.chip,
+              const SizedBox(width: 8),
+              Transform.scale(
+                scale: 0.85,
+                child: Switch(
+                  value: value,
+                  onChanged: onChanged,
+                  activeThumbColor: Nv.onAccent,
+                  activeTrackColor: Nv.accent,
+                  inactiveThumbColor: Nv.muted,
+                  inactiveTrackColor: Nv.glass,
+                ),
               ),
             ],
           ),
