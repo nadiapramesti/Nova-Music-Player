@@ -13,7 +13,7 @@ android/
 ios/
 linux/
 macos/
-windows/
+/windows/
 web/
 test/widget_test.dart
 
