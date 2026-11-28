@@ -4,6 +4,7 @@ import '../models.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import '../widgets/controls.dart';
+import '../widgets/fast_scroll.dart';
 import '../widgets/island.dart';
 import '../widgets/song_actions.dart';
 import '../widgets/song_row.dart';
@@ -113,7 +114,11 @@ class SongListScreen extends StatelessWidget {
       body: Stack(
         children: [
           const Glow(top: -120, right: -140, size: 380),
-          CustomScrollView(
+          FastScroller(
+            itemCount: songs.length,
+            itemExtent: kSongRowExtent,
+            padding: EdgeInsets.only(top: top + 20, bottom: MediaQuery.of(context).padding.bottom + 40),
+            child: CustomScrollView(
             slivers: [
               SliverToBoxAdapter(
                 child: Padding(
@@ -194,17 +199,21 @@ class SongListScreen extends StatelessWidget {
                   ),
                 )
               else
-                SliverList.builder(
-                  itemCount: songs.length,
-                  itemBuilder: (context, i) => SongRow(
-                    song: songs[i],
-                    number: i + 1,
-                    playlistId: playlistId,
-                    onTap: () => playAndOpen(context, songs, i, from: title),
+                SliverFixedExtentList(
+                  itemExtent: kSongRowExtent,
+                  delegate: SliverChildBuilderDelegate(
+                    childCount: songs.length,
+                    (context, i) => SongRow(
+                      song: songs[i],
+                      number: i + 1,
+                      playlistId: playlistId,
+                      onTap: () => playAndOpen(context, songs, i, from: title),
+                    ),
                   ),
                 ),
               SliverToBoxAdapter(child: SizedBox(height: MediaQuery.of(context).padding.bottom + 24)),
             ],
+          ),
           ),
           const Positioned.fill(child: NowIsland()),
         ],

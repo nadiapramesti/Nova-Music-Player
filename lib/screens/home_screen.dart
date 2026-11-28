@@ -7,6 +7,7 @@ import '../services/services.dart';
 import '../theme.dart';
 import '../widgets/art.dart';
 import '../widgets/controls.dart';
+import '../widgets/fast_scroll.dart';
 import '../widgets/message_view.dart';
 import '../widgets/settings_sheet.dart';
 import '../widgets/song_row.dart';
@@ -108,88 +109,115 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  final _listKey = GlobalKey();
+
+  String _labelFor(Song s) => _sort == SortMode.az ? letterOf(s.title) : monthOf(s.dateAdded);
+
   Widget _ready(BuildContext context) {
     final songs = library.songs;
     final sorted = _sorted(songs);
-    final top = MediaQuery.of(context).padding.top;
+    final mq = MediaQuery.of(context);
     final from = 'Daftar putar · ${_labels[_sort]}';
+    const barH = 54.0;
 
     return Stack(
       children: [
         const Glow(top: -120, right: -140, size: 380),
         Glow(top: 430, left: -160, size: 360, color: Nv.glowSoft),
-        RefreshIndicator(
-          onRefresh: () => library.load(ask: false),
-          color: Nv.accent,
-          backgroundColor: Nv.coverBig,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: EdgeInsets.fromLTRB(20, top + 14, 20, 0),
-                  child: Row(
-                    children: [
-                      const NovaMark(size: 32),
-                      const SizedBox(width: 6),
-                      Text('nova', style: disp(26, spacing: -1)),
-                      const Spacer(),
-                      _ScanButton(onTap: () => library.load(ask: false)),
-                      const SizedBox(width: 8),
-                      GlassCircleButton(
-                        icon: Icons.tune_rounded,
-                        label: 'Pengaturan',
-                        onTap: () => showSettingsSheet(context),
+        // Daftar dipotong di bawah status bar: bilah urutan bisa nempel di atas
+        // tanpa isi daftar nyelip di belakang jam/baterai.
+        Positioned.fill(
+          top: mq.padding.top,
+          child: FastScroller(
+            itemCount: sorted.length,
+            itemExtent: kSongRowExtent,
+            listKey: _listKey,
+            pinnedExtent: barH,
+            labelAt: (i) => _labelFor(sorted[i]),
+            padding: EdgeInsets.only(top: barH + 10, bottom: mq.padding.bottom + 130),
+            child: RefreshIndicator(
+              onRefresh: () => library.load(ask: false),
+              color: Nv.accent,
+              backgroundColor: Nv.coverBig,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+                      child: Row(
+                        children: [
+                          const NovaMark(size: 32),
+                          const SizedBox(width: 6),
+                          Text('nova', style: disp(26, spacing: -1)),
+                          const Spacer(),
+                          _ScanButton(onTap: () => library.load(ask: false)),
+                          const SizedBox(width: 8),
+                          GlassCircleButton(
+                            icon: Icons.tune_rounded,
+                            label: 'Pengaturan',
+                            onTap: () => showSettingsSheet(context),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${songs.length} lagu.', style: disp(34, height: 1.0, spacing: -1.2)),
-                      Text('Semuanya punya lu.',
-                          style: disp(34, height: 1.0, spacing: -1.2, color: Nv.accent, italic: true)),
-                    ],
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(child: _ResumeCard(songs: songs)),
-              SliverToBoxAdapter(child: SectionHeader('Daftar putar', trailing: '${songs.length}')),
-              SliverToBoxAdapter(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-                  child: Row(
-                    children: [
-                      for (final m in SortMode.values) ...[
-                        Pill(label: _labels[m]!, selected: _sort == m, onTap: () => _setSort(m)),
-                        const SizedBox(width: 6),
-                      ],
-                      Pill(
-                        label: 'Acak',
-                        icon: Icons.shuffle_rounded,
-                        selected: false,
-                        onTap: () => shuffleAndOpen(context, sorted, from: 'Daftar putar · Acak'),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 22, 20, 0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${songs.length} lagu.', style: disp(34, height: 1.0, spacing: -1.2)),
+                          Text('Semuanya punya lu.',
+                              style: disp(34, height: 1.0, spacing: -1.2, color: Nv.accent, italic: true)),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
-                ),
+                  SliverToBoxAdapter(child: _ResumeCard(songs: songs)),
+                  SliverToBoxAdapter(child: SectionHeader('Daftar putar', trailing: '${songs.length}')),
+                  // Urutan + acak nempel di atas: ganti urutan gak perlu gulir balik ke atas.
+                  SliverPersistentHeader(
+                    pinned: true,
+                    delegate: PinnedBarDelegate(
+                      height: barH,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        child: Row(
+                          children: [
+                            for (final m in SortMode.values) ...[
+                              Pill(label: _labels[m]!, selected: _sort == m, onTap: () => _setSort(m)),
+                              const SizedBox(width: 6),
+                            ],
+                            Pill(
+                              label: 'Acak',
+                              icon: Icons.shuffle_rounded,
+                              selected: false,
+                              onTap: () => shuffleAndOpen(context, sorted, from: 'Daftar putar · Acak'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverFixedExtentList(
+                    key: _listKey,
+                    itemExtent: kSongRowExtent,
+                    delegate: SliverChildBuilderDelegate(
+                      (context, i) => SongRow(
+                        song: sorted[i],
+                        number: i + 1,
+                        onTap: () => playAndOpen(context, sorted, i, from: from),
+                      ),
+                      childCount: sorted.length,
+                    ),
+                  ),
+                  const SliverToBoxAdapter(child: SizedBox(height: 200)),
+                ],
               ),
-              SliverList.builder(
-                itemCount: sorted.length,
-                itemBuilder: (context, i) => SongRow(
-                  song: sorted[i],
-                  number: i + 1,
-                  onTap: () => playAndOpen(context, sorted, i, from: from),
-                ),
-              ),
-              const SliverToBoxAdapter(child: SizedBox(height: 200)),
-            ],
+            ),
           ),
         ),
       ],

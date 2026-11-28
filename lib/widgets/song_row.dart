@@ -6,6 +6,10 @@ import '../theme.dart';
 import 'art.dart';
 import 'song_actions.dart';
 
+/// Tinggi tetap satu baris lagu. Tetap = daftar ribuan lagu tetap ringan,
+/// dan gagang gulir cepat bisa tau persis baris mana yang lagi keliatan.
+const double kSongRowExtent = 62;
+
 /// Satu baris lagu: nomor mono, cover, judul, artis, durasi.
 class SongRow extends StatelessWidget {
   const SongRow({
@@ -29,19 +33,29 @@ class SongRow extends StatelessWidget {
       valueListenable: audio.current,
       builder: (context, cur, _) {
         final on = cur?.id == song.id;
-        return InkWell(
+        return MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.15,
+          child: InkWell(
           onTap: onTap,
           onLongPress: () => showSongActions(context, song, playlistId: playlistId),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            height: kSongRowExtent,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
             decoration: BoxDecoration(border: Border(top: BorderSide(color: Nv.rule))),
             child: Row(
               children: [
                 SizedBox(
-                  width: 24,
+                  width: 34,
                   child: on
-                      ? Icon(Icons.play_arrow_rounded, size: 16, color: Nv.accent)
-                      : Text(twoDigits(number), style: mono(TS.mono)),
+                      ? Align(
+                          alignment: Alignment.centerLeft,
+                          child: Icon(Icons.play_arrow_rounded, size: 16, color: Nv.accent))
+                      // Nomor 4 digit (lagu ke-1000+) dikecilin, gak nabrak cover.
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(twoDigits(number), style: mono(TS.mono)),
+                        ),
                 ),
                 Art(songId: song.id, size: 40, radius: 9),
                 const SizedBox(width: 12),
@@ -69,6 +83,7 @@ class SongRow extends StatelessWidget {
                 Text(fmt(song.duration), style: mono(TS.mono, w: 500)),
               ],
             ),
+          ),
           ),
         );
       },

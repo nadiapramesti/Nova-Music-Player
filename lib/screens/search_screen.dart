@@ -52,10 +52,12 @@ class _SearchScreenState extends State<SearchScreen> {
         return Stack(
           children: [
             const Glow(top: 20, left: -110, size: 360),
-            ListView(
+            CustomScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-              padding: EdgeInsets.fromLTRB(0, top + 14, 0, 200),
-              children: [
+              slivers: [
+                SliverToBoxAdapter(
+                    child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                SizedBox(height: top + 14),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Text('Cari', style: disp(40, spacing: -1.6)),
@@ -93,7 +95,13 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   ),
                 ),
-                if (searching) ..._resultList(results) else ..._idle(context),
+                ])),
+                if (searching)
+                  ..._resultList(results)
+                else
+                  SliverToBoxAdapter(
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: _idle(context))),
+                const SliverToBoxAdapter(child: SizedBox(height: 200)),
               ],
             ),
           ],
@@ -105,27 +113,32 @@ class _SearchScreenState extends State<SearchScreen> {
   List<Widget> _resultList(List<Song> results) {
     if (results.isEmpty) {
       return [
-        Padding(
+        SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 40, 20, 0),
           child: Text('Gak ketemu. Coba kata kunci lain.',
               textAlign: TextAlign.center, style: disp(TS.body, w: 500, color: Nv.muted)),
-        ),
+        )),
       ];
     }
     return [
-      Padding(
+      SliverToBoxAdapter(child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 8),
         child: Text('${results.length} HASIL', style: mono(TS.label, spacing: 1)),
-      ),
-      for (final (i, s) in results.indexed)
-        SongRow(
-          song: s,
-          number: i + 1,
-          onTap: () {
-            stats.addRecent(_q);
-            playAndOpen(context, results, i, from: 'Hasil cari · ${_q.trim()}');
-          },
+      )),
+      SliverFixedExtentList(
+        itemExtent: kSongRowExtent,
+        delegate: SliverChildBuilderDelegate(
+          childCount: results.length,
+          (context, i) => SongRow(
+            song: results[i],
+            number: i + 1,
+            onTap: () {
+              stats.addRecent(_q);
+              playAndOpen(context, results, i, from: 'Hasil cari · ${_q.trim()}');
+            },
+          ),
         ),
+      ),
     ];
   }
 
