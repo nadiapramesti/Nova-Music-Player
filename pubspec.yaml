@@ -16,7 +16,9 @@ dependencies:
   media_kit_libs_windows_audio: any
   window_manager: ^0.5.1
   audio_metadata_reader: ^1.8.1
-  file_selector: ^1.0.3
+  # Cuma implementasi Windows (versi Android-nya bikin lint build APK crash).
+  file_selector_platform_interface: ^2.6.2
+  file_selector_windows: ^0.9.3
   path_provider: ^2.1.4
   multicast_dns: ^0.3.2
   smtc_windows: ^1.1.0

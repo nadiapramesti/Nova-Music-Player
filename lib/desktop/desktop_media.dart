@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:audio_metadata_reader/audio_metadata_reader.dart';
-import 'package:file_selector/file_selector.dart';
+import 'package:file_selector_platform_interface/file_selector_platform_interface.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -49,7 +49,7 @@ class DesktopMedia {
       (await SharedPreferences.getInstance()).setStringList('musicFolders', f.map(norm).toList());
 
   static Future<String?> pickFolder() async {
-    final d = await getDirectoryPath(confirmButtonText: 'Pakai folder ini');
+    final d = await FileSelectorPlatform.instance.getDirectoryPath(confirmButtonText: 'Pakai folder ini');
     return d == null ? null : norm(d);
   }
 
@@ -169,7 +169,7 @@ class DesktopMedia {
   }
 
   static Future<String?> pickCover(int id) async {
-    final f = await openFile(acceptedTypeGroups: const [
+    final f = await FileSelectorPlatform.instance.openFile(acceptedTypeGroups: const [
       XTypeGroup(label: 'Gambar', extensions: ['jpg', 'jpeg', 'png', 'webp']),
     ]);
     if (f == null) return null;
@@ -200,16 +200,17 @@ class DesktopMedia {
   // ---- Cadangan ----
 
   static Future<bool> saveBackup(String name, String content) async {
-    final loc = await getSaveLocation(suggestedName: name, acceptedTypeGroups: const [
-      XTypeGroup(label: 'Cadangan Nova', extensions: ['json']),
-    ]);
+    final loc = await FileSelectorPlatform.instance.getSaveLocation(
+      acceptedTypeGroups: const [XTypeGroup(label: 'Cadangan Nova', extensions: ['json'])],
+      options: SaveDialogOptions(suggestedName: name),
+    );
     if (loc == null) return false;
     await File(loc.path).writeAsString(content);
     return true;
   }
 
   static Future<String?> openBackup() async {
-    final f = await openFile(acceptedTypeGroups: const [
+    final f = await FileSelectorPlatform.instance.openFile(acceptedTypeGroups: const [
       XTypeGroup(label: 'Cadangan Nova', extensions: ['json']),
     ]);
     return f?.readAsString();
