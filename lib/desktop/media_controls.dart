@@ -51,7 +51,7 @@ class DesktopMediaControls {
       audio.current.addListener(_meta);
       audio.player.playingStream.listen((p) {
         try {
-          smtc.setPlaybackStatus(p ? PlaybackStatus.Playing : PlaybackStatus.Paused);
+          smtc.setPlaybackStatus(p ? PlaybackStatus.playing : PlaybackStatus.paused);
         } catch (_) {}
       });
       _meta();
