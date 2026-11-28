@@ -4,6 +4,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../demo/demo.dart';
+import '../desktop/desktop_media.dart';
+import '../platform.dart';
 import '../demo/demo_data.dart';
 import '../models.dart';
 import 'song_edits.dart';
@@ -96,6 +98,29 @@ class LibraryService extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    if (isDesktop) {
+      // Laptop: baca folder musik langsung (gak ada MediaStore / izin).
+      try {
+        _p ??= await SharedPreferences.getInstance();
+        hiddenFolders = (_p!.getStringList('hiddenFolders') ?? const []).toSet();
+        edits = decodeEdits(_p!.getString('songEdits'));
+        await Artwork.loadCustom();
+        _scanned = (await DesktopMedia.scan())
+            // Durasi gak kebaca (0) tetap ditampilin; < 30 detik dibuang.
+            .where((s) => s.durationMs == 0 || s.durationMs >= 30000)
+            .toList()
+          ..sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
+        DesktopMedia.remember(_scanned);
+        allSongs = applyEdits(_scanned, edits);
+        _applyHidden();
+        status = LibraryStatus.ready;
+      } catch (e) {
+        errorMessage = e.toString();
+        status = LibraryStatus.error;
+      }
+      notifyListeners();
+      return;
+    }
     try {
       if (!await _granted(ask: ask)) {
         status = LibraryStatus.needPermission;
@@ -126,7 +151,9 @@ class LibraryService extends ChangeNotifier {
   /// true = beneran kehapus; lagu langsung dibuang dari daftar.
   Future<bool> deleteSongs(List<int> ids) async {
     if (kDemo || ids.isEmpty) return false;
-    final ok = await _ch.invokeMethod<bool>('deleteSongs', {'ids': ids}) ?? false;
+    final ok = isDesktop
+        ? await DesktopMedia.deleteSongs(ids)
+        : await _ch.invokeMethod<bool>('deleteSongs', {'ids': ids}) ?? false;
     if (!ok) return false;
     final gone = ids.toSet();
     _scanned = [for (final s in _scanned) if (!gone.contains(s.id)) s];
@@ -180,6 +207,11 @@ class Artwork {
 
   static Future<void> loadCustom() async {
     if (kDemo) return;
+    if (isDesktop) {
+      coverDir = DesktopMedia.norm((await DesktopMedia.coverDir()).path);
+      customIds = (await DesktopMedia.coverIds()).toSet();
+      return;
+    }
     try {
       coverDir = await _ch.invokeMethod<String>('coverDir');
       final ids = await _ch.invokeListMethod<dynamic>('coverIds') ?? const [];
@@ -194,7 +226,9 @@ class Artwork {
 
   /// Pilih foto dari galeri buat lagu ini. true = berhasil diganti.
   static Future<bool> pick(int songId) async {
-    final path = await _ch.invokeMethod<String>('pickCover', {'id': songId});
+    final path = isDesktop
+        ? await DesktopMedia.pickCover(songId)
+        : await _ch.invokeMethod<String>('pickCover', {'id': songId});
     if (path == null) return false;
     customIds = {...customIds, songId};
     evict(songId);
@@ -202,7 +236,11 @@ class Artwork {
   }
 
   static Future<void> removeCustom(int songId) async {
-    await _ch.invokeMethod<bool>('removeCover', {'id': songId});
+    if (isDesktop) {
+      await DesktopMedia.removeCover(songId);
+    } else {
+      await _ch.invokeMethod<bool>('removeCover', {'id': songId});
+    }
     customIds = {...customIds}..remove(songId);
     evict(songId);
   }
@@ -211,6 +249,7 @@ class Artwork {
     if (kDemo) return Future.value(null);
     return _cache.putIfAbsent('$songId@$size', () async {
       try {
+        if (isDesktop) return await DesktopMedia.artwork(songId);
         return await _ch.invokeMethod<Uint8List>('artwork', {'id': songId, 'size': size});
       } catch (_) {
         return null;

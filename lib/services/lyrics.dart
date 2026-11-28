@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../demo/demo.dart';
+import '../desktop/desktop_media.dart';
+import '../platform.dart';
 import '../models.dart';
 
 class LyricLine {
@@ -120,7 +122,9 @@ class LyricsService {
     final lrc = await _sidecar(song);
     if (lrc != null) return lrc;
     try {
-      final raw = await _ch.invokeMethod<String>('lyrics', {'id': song.id});
+      final raw = isDesktop
+          ? await DesktopMedia.embeddedLyrics(song.id)
+          : await _ch.invokeMethod<String>('lyrics', {'id': song.id});
       if (raw != null && raw.trim().isNotEmpty) return parseLrc(raw, source: 'tertanam di lagu');
     } catch (e) {
       debugPrint('lirik tertanam gagal: $e');

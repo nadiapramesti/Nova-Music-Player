@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../demo/demo.dart';
+import '../platform.dart';
 import '../theme.dart';
 import 'player_service.dart';
 import 'stats_service.dart';
@@ -25,7 +26,8 @@ class IslandService extends ChangeNotifier with WidgetsBindingObserver {
   bool _waitingPermission = false;
 
   Future<void> init(PlayerService audio, StatsService stats) async {
-    if (kDemo) {
+    // Laptop punya pulau sendiri (lib/desktop/desktop_island.dart).
+    if (kDemo || isDesktop) {
       inApp = false;
       outside = false;
       return;

@@ -8,6 +8,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../demo/demo.dart';
+import '../platform.dart';
 import '../demo/silent_source.dart';
 import '../models.dart';
 import 'nova_shuffle.dart';
@@ -63,7 +64,7 @@ class PlayerService {
   /// Nova gak dikabarin pas app lain (video) mau bunyi: kadang tetap jalan,
   /// kadang dibisuin sistem padahal statusnya masih "diputar". Ini nutup celah itu.
   Future<void> _claimFocus() async {
-    if (kDemo) return;
+    if (kDemo || isDesktop) return;
     try {
       final session = await AudioSession.instance;
       if (!await session.setActive(true)) await player.pause();
@@ -80,7 +81,8 @@ class PlayerService {
     final v = p.getInt('fadeSeconds') ?? 2;
     fadeSeconds.value = transitionChoices.contains(v) ? v : 2;
     _syncFadeTicker();
-    await _listenFocus();
+    // Laptop gak punya "giliran bunyi" kayak HP.
+    if (!isDesktop) await _listenFocus();
   }
 
   Timer? _duckTimer;
@@ -160,6 +162,7 @@ class PlayerService {
   // cuma ngecilin suara kalau app lain minta "duck", kayak SW WA).
   late final AudioPlayer player = AudioPlayer(
     handleInterruptions: false,
+    handleAudioSessionActivation: !isDesktop,
     audioPipeline: AudioPipeline(androidAudioEffects: [_eq.eq]),
   );
 

@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/services.dart';
 import 'package:just_audio_background/just_audio_background.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 
 import 'demo/demo.dart';
+import 'desktop/desktop_window.dart';
+import 'desktop/media_controls.dart';
+import 'platform.dart';
 import 'screens/shell.dart';
 import 'screens/splash_screen.dart';
 import 'services/services.dart';
@@ -16,14 +20,20 @@ Future<void> main() async {
   // Sesi audio "musik": kayak app musik lain, Nova minggir kalau app lain bunyi
   // (video TikTok/SW WA → jeda; telepon → jeda lalu lanjut sendiri; notifikasi →
   // suara dikecilin sebentar; headset dicabut → jeda).
-  final session = await AudioSession.instance;
-  await session.configure(const AudioSessionConfiguration.music());
+  if (isDesktop) {
+    // Laptop: pemutar pakai media_kit, jendela & pulau sendiri.
+    JustAudioMediaKit.ensureInitialized();
+    await DesktopWindow.instance.setup();
+  } else {
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
 
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.nadia.nova.audio',
-    androidNotificationChannelName: 'Pemutar Nova',
-    androidNotificationOngoing: true,
-  );
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.nadia.nova.audio',
+      androidNotificationChannelName: 'Pemutar Nova',
+      androidNotificationOngoing: true,
+    );
+  }
   await equalizer.init();
   await stats.init();
   await playlists.init();
@@ -31,6 +41,7 @@ Future<void> main() async {
   await audio.initPlayback();
   await coverTint.init();
   cast.init();
+  if (isDesktop) await DesktopMediaControls.init();
 
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   // Produksi selalu gelap. Mode demo bisa mulai terang: --dart-define=DEMO_THEME=light
@@ -52,6 +63,8 @@ class NovaApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
         home: const SplashGate(child: Shell()),
+        // Laptop: bilah judul sendiri + pulau melayang.
+        builder: isDesktop ? (context, child) => DesktopFrame(child: child!) : null,
       ),
     );
   }

@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../desktop/desktop_media.dart';
+import '../platform.dart';
+
 /// Data Nova yang ikut dicadangkan. Kunci lain (mis. posisi lagu terakhir) gak ikut.
 const backupKeys = <String>{
   'fav', // favorit
@@ -91,13 +94,14 @@ class BackupService {
     final d = DateTime.now();
     String two(int n) => n.toString().padLeft(2, '0');
     final name = 'nova-cadangan-${d.year}-${two(d.month)}-${two(d.day)}.json';
+    if (isDesktop) return DesktopMedia.saveBackup(name, content);
     final r = await _ch.invokeMethod<String>('save', {'name': name, 'content': content});
     return r == 'ok';
   }
 
   /// Pilih file cadangan. null = dibatalin; throw FormatException kalau bukan file Nova.
   Future<Map<String, Object>?> pick() async {
-    final raw = await _ch.invokeMethod<String>('open');
+    final raw = isDesktop ? await DesktopMedia.openBackup() : await _ch.invokeMethod<String>('open');
     if (raw == null) return null;
     final data = parseBackup(raw);
     if (data == null) throw const FormatException('Bukan file cadangan Nova');
@@ -118,6 +122,7 @@ class BackupService {
       if (v is double) await p.setDouble(e.key, v);
       if (v is List<String>) await p.setStringList(e.key, v);
     }
+    if (isDesktop) return DesktopMedia.restart();
     await _ch.invokeMethod('restart');
   }
 }

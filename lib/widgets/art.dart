@@ -49,7 +49,13 @@ class Art extends StatelessWidget {
                   child: SizedBox.expand(),
                 );
           }
-          return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
+          return Image.memory(
+            bytes,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+            // Cover asli di laptop bisa gede: dikecilin pas di-decode biar hemat memori.
+            cacheWidth: big ? 900 : 320,
+          );
         },
         ),
       ),

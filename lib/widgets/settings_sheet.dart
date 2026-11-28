@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../demo/demo.dart';
+import '../desktop/desktop_media.dart';
+import '../desktop/desktop_window.dart';
+import '../platform.dart';
 import '../services/services.dart';
 import '../theme.dart';
 import 'controls.dart';
@@ -11,7 +14,14 @@ import '../models.dart';
 void showSettingsSheet(BuildContext context) {
   showGlassSheet<void>(context, (sheet) {
     return ListenableBuilder(
-      listenable: Listenable.merge([island, library, coverTint, audio.fadeSeconds, equalizer]),
+      listenable: Listenable.merge([
+        island,
+        library,
+        coverTint,
+        audio.fadeSeconds,
+        equalizer,
+        if (isDesktop) DesktopWindow.instance,
+      ]),
       builder: (context, _) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,6 +52,7 @@ void showSettingsSheet(BuildContext context) {
               selected: transitionChoices.indexOf(audio.fadeSeconds.value),
               onSelect: (i) => audio.setFadeSeconds(transitionChoices[i]),
             ),
+            if (isAndroid)
             _NavRow(
               icon: Icons.equalizer_rounded,
               label: 'Equalizer',
@@ -51,6 +62,10 @@ void showSettingsSheet(BuildContext context) {
               onTap: () => showEqSheet(context),
             ),
           ]),
+          if (isDesktop) ...[
+            const _Label('Folder musik'),
+            const _MusicFolders(),
+          ],
           const _Label('Pustaka & cadangan'),
           _Group(children: [
             _NavRow(
@@ -62,8 +77,27 @@ void showSettingsSheet(BuildContext context) {
             _NavRow(icon: Icons.save_alt_rounded, label: 'Simpan cadangan', onTap: () => _exportBackup(context)),
             _NavRow(icon: Icons.restore_rounded, label: 'Pulihkan cadangan', onTap: () => _importBackup(context)),
           ]),
-          const _Label('Pulau di notch'),
-          _Group(children: [
+          if (isDesktop) ...[
+            const _Label('Pulau'),
+            _Group(children: [
+              _Toggle(
+                title: 'Tombol X jadi pulau',
+                body: 'Nova jadi pil kecil di atas layar, musik tetap jalan.',
+                value: DesktopWindow.instance.closeToIsland,
+                onChanged: DesktopWindow.instance.setCloseToIsland,
+              ),
+              _NavRow(
+                icon: Icons.picture_in_picture_alt_rounded,
+                label: 'Jadi pulau sekarang',
+                onTap: () {
+                  Navigator.of(context).pop();
+                  DesktopWindow.instance.enterIsland();
+                },
+              ),
+            ]),
+          ],
+          if (isAndroid) const _Label('Pulau di notch'),
+          if (isAndroid) _Group(children: [
             _Toggle(
               title: 'Di luar Nova',
               body: 'Muncul di area kamera, lalu ngumpet sendiri.',
@@ -428,4 +462,51 @@ Future<void> _importBackup(BuildContext context) async {
       ],
     );
   });
+}
+
+/// Laptop: folder tempat Nova nyari lagu (bawaannya folder Musik).
+class _MusicFolders extends StatefulWidget {
+  const _MusicFolders();
+
+  @override
+  State<_MusicFolders> createState() => _MusicFoldersState();
+}
+
+class _MusicFoldersState extends State<_MusicFolders> {
+  List<String> _folders = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    DesktopMedia.folders().then((f) {
+      if (mounted) setState(() => _folders = f);
+    });
+  }
+
+  Future<void> _save(List<String> next) async {
+    setState(() => _folders = next);
+    await DesktopMedia.setFolders(next);
+    await library.load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return _Group(children: [
+      for (final f in _folders)
+        _NavRow(
+          icon: Icons.folder_outlined,
+          label: f.split('/').where((e) => e.isNotEmpty).last,
+          value: _folders.length > 1 ? 'Hapus' : null,
+          onTap: _folders.length > 1 ? () => _save([..._folders]..remove(f)) : () {},
+        ),
+      _NavRow(
+        icon: Icons.create_new_folder_outlined,
+        label: 'Tambah folder musik',
+        onTap: () async {
+          final d = await DesktopMedia.pickFolder();
+          if (d != null && !_folders.contains(d)) await _save([..._folders, d]);
+        },
+      ),
+    ]);
+  }
 }

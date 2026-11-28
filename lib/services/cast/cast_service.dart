@@ -6,6 +6,8 @@ import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../demo/demo.dart';
+import '../../desktop/cast_discovery.dart';
+import '../../platform.dart';
 import '../../models.dart';
 import '../../theme.dart';
 import '../library_service.dart';
@@ -106,6 +108,15 @@ class CastService extends ChangeNotifier {
     scanning = true;
     notifyListeners();
     try {
+      if (isDesktop) {
+        // Laptop: cari lewat mDNS langsung dari Dart.
+        _desktopScan?.stop();
+        _desktopScan = DesktopCastScan(onFound: (d) {
+          devices[d.id] = d;
+          notifyListeners();
+        })..start();
+        return;
+      }
       await _ch.invokeMethod('start');
     } catch (_) {
       scanning = false;
@@ -114,8 +125,13 @@ class CastService extends ChangeNotifier {
     }
   }
 
+  DesktopCastScan? _desktopScan;
+
   Future<void> stopScan() async {
     scanning = false;
+    _desktopScan?.stop();
+    _desktopScan = null;
+    if (isDesktop) return;
     try {
       await _ch.invokeMethod('stop');
     } catch (_) {}
@@ -137,8 +153,8 @@ class CastService extends ChangeNotifier {
       final client = CastClient(d.host, d.port);
       await client.connect();
       _client = client;
-      unawaited(_ch.invokeMethod('wifiLock', true));
-      unawaited(_ch.invokeMethod('volumeKeys', true));
+      if (isAndroid) unawaited(_ch.invokeMethod('wifiLock', true));
+      if (isAndroid) unawaited(_ch.invokeMethod('volumeKeys', true));
       client.onVolume = (v) {
         tvVolume = v;
         notifyListeners();
