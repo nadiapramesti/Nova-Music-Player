@@ -30,4 +30,4 @@ final island = IslandService();
 final playlists = PlaylistService();
 final lyrics = LyricsService();
 final coverTint = CoverTintService(audio);
-final cast = CastService(audio, library);
+final cast = CastService(audio, library, lyricsOf: (s) => lyrics.of(s));

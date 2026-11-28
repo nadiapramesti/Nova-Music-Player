@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'cast_config.dart';
 import 'cast_proto.dart';
 
 const _nsConn = 'urn:x-cast:com.google.cast.tp.connection';
@@ -9,8 +10,6 @@ const _nsBeat = 'urn:x-cast:com.google.cast.tp.heartbeat';
 const _nsRecv = 'urn:x-cast:com.google.cast.receiver';
 const _nsMedia = 'urn:x-cast:com.google.cast.media';
 
-/// Pemutar bawaan Chromecast (Default Media Receiver).
-const _defaultReceiver = 'CC1AD845';
 
 /// Status pemutaran di TV.
 class CastMediaStatus {
@@ -79,10 +78,11 @@ class CastClient {
   }
 
   Future<void> _launch() async {
-    final res = await _request('receiver-0', _nsRecv, {'type': 'LAUNCH', 'appId': _defaultReceiver});
+    final appId = castAppId;
+    final res = await _request('receiver-0', _nsRecv, {'type': 'LAUNCH', 'appId': appId}, timeout: const Duration(seconds: 15));
     final apps = (res['status'] as Map?)?['applications'];
     final app = apps is List
-        ? apps.whereType<Map>().firstWhere((a) => a['appId'] == _defaultReceiver, orElse: () => const {})
+        ? apps.whereType<Map>().firstWhere((a) => a['appId'] == appId, orElse: () => const {})
         : const {};
     final t = app['transportId'];
     if (t is! String) throw const CastException('TV gak bisa buka pemutar.');
@@ -100,11 +100,14 @@ class CastClient {
     String? coverUrl,
     Duration start = Duration.zero,
     bool autoplay = true,
+    Map<String, dynamic>? customData,
   }) async {
     final t = _transport ?? (throw const CastException('Belum nyambung ke TV.'));
     final res = await _request(t, _nsMedia, {
       'type': 'LOAD',
       'autoplay': autoplay,
+      // Buat pemutar Nova di TV: lirik, warna aksen, lagu berikutnya.
+      if (customData != null) 'customData': customData,
       'currentTime': start.inMilliseconds / 1000,
       'media': {
         'contentId': url,

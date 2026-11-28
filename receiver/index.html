@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Nova</title>
+<!-- Pemutar Nova di TV (Google Cast Web Receiver). Dibuka TV pas Nova nge-cast. -->
+<script src="https://www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #AEB9FF; --bg: #0A0B0F; --text: #ECEEF5; --muted: #8F95A8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+    font-family: 'Instrument Sans', sans-serif; }
+  /* Latar: cover diperbesar & diblur, dikasih gelap biar teks kebaca */
+  #bg { position: fixed; inset: -10%; background-size: cover; background-position: center;
+    filter: blur(70px) saturate(1.3); opacity: .55; transition: background-image .8s, opacity .8s; }
+  #shade { position: fixed; inset: 0;
+    background: radial-gradient(120% 90% at 80% 10%, transparent 0%, rgba(10,11,15,.55) 55%, rgba(10,11,15,.92) 100%); }
+  #stage { position: fixed; inset: 0; display: flex; align-items: center; gap: 6vw; padding: 0 7vw; }
+  #cover { width: 40vh; height: 40vh; flex: none; border-radius: 3.2vh; background: #1a1c24 center/cover;
+    box-shadow: 0 4vh 10vh rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.08); transition: transform .6s cubic-bezier(.05,.7,.1,1); }
+  body.paused #cover { transform: scale(.94); }
+  #info { flex: 1; min-width: 0; }
+  .eyebrow { font-family: 'IBM Plex Mono', monospace; font-size: 1.7vh; letter-spacing: .35vh; color: var(--muted); text-transform: uppercase; }
+  .eyebrow b { color: var(--accent); font-weight: 500; }
+  #title { font-family: 'Instrument Serif', serif; font-weight: 400; font-size: 9vh; line-height: 1.02; margin-top: 1.4vh;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  #artist { font-size: 3vh; font-weight: 600; margin-top: 1.4vh; color: var(--text); opacity: .9;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #album { font-size: 2.2vh; color: var(--muted); margin-top: .6vh; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #bar { margin-top: 4vh; height: .6vh; border-radius: .3vh; background: rgba(255,255,255,.12); overflow: hidden; }
+  #fill { height: 100%; width: 0; background: var(--accent); border-radius: .3vh; }
+  #times { display: flex; justify-content: space-between; margin-top: 1.2vh;
+    font-family: 'IBM Plex Mono', monospace; font-size: 1.7vh; color: var(--muted); }
+  /* Lirik: baris sekarang besar, baris berikutnya redup */
+  #lyrics { margin-top: 4.5vh; min-height: 13vh; }
+  #lyrics .now { font-family: 'Instrument Serif', serif; font-style: italic; font-size: 5.2vh; line-height: 1.1;
+    color: var(--accent); transition: opacity .35s; }
+  #lyrics .next { font-size: 2.6vh; color: var(--muted); margin-top: 1.4vh; transition: opacity .35s; }
+  #upnext { margin-top: 4.5vh; font-size: 2.2vh; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #upnext b { color: var(--text); font-weight: 600; }
+  #pausedTag { display: none; margin-left: 1.5vh; padding: .3vh 1.2vh; border-radius: 1vh; background: rgba(255,255,255,.1); color: var(--text); }
+  body.paused #pausedTag { display: inline-block; }
+  /* Layar tunggu */
+  #idle { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh;
+    transition: opacity .6s; }
+  #idle .logo { font-family: 'Instrument Serif', serif; font-size: 12vh; }
+  #idle .logo i { color: var(--accent); }
+  #idle p { color: var(--muted); font-size: 2.4vh; }
+  body.playing #idle { opacity: 0; pointer-events: none; }
+  body:not(.playing) #stage, body:not(.playing) #bg { opacity: 0; }
+  #stage { transition: opacity .6s; }
+  cast-media-player { display: none; }
+</style>
+</head>
+<body>
+  <div id="bg"></div><div id="shade"></div>
+  <div id="idle"><div class="logo">nova<i>.</i></div><p>Siap nerima lagu dari Nova</p></div>
+  <div id="stage">
+    <div id="cover"></div>
+    <div id="info">
+      <div class="eyebrow"><b>NOVA</b> · SEDANG DIPUTAR <span id="pausedTag">DIJEDA</span></div>
+      <div id="title"></div>
+      <div id="artist"></div>
+      <div id="album"></div>
+      <div id="bar"><div id="fill"></div></div>
+      <div id="times"><span id="cur">0:00</span><span id="dur">0:00</span></div>
+      <div id="lyrics"><div class="now"></div><div class="next"></div></div>
+      <div id="upnext"></div>
+    </div>
+  </div>
+  <cast-media-player></cast-media-player>
+<script>
+  const ctx = cast.framework.CastReceiverContext.getInstance();
+  const pm = ctx.getPlayerManager();
+  const $ = (id) => document.getElementById(id);
+  let lyrics = [];   // [[ms, teks], ...] urut waktu
+  let lastLine = -2;
+
+  const fmt = (s) => { s = Math.max(0, Math.floor(s || 0)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+
+  function show(media, custom) {
+    const md = (media && media.metadata) || {};
+    $('title').textContent = md.title || '';
+    $('artist').textContent = md.artist || '';
+    $('album').textContent = md.albumName || '';
+    const img = md.images && md.images[0] && md.images[0].url;
+    $('cover').style.backgroundImage = img ? 'url("' + img + '")' : '';
+    $('bg').style.backgroundImage = img ? 'url("' + img + '")' : '';
+    custom = custom || {};
+    if (custom.accent) document.documentElement.style.setProperty('--accent', custom.accent);
+    lyrics = Array.isArray(custom.lyrics) ? custom.lyrics : [];
+    lastLine = -2;
+    $('lyrics').style.display = lyrics.length ? '' : 'none';
+    const n = custom.next;
+    $('upnext').innerHTML = '';
+    if (n && n.title) {
+      $('upnext').textContent = 'Selanjutnya · ';
+      const b = document.createElement('b');
+      b.textContent = n.title + (n.artist ? ' — ' + n.artist : '');
+      $('upnext').appendChild(b);
+    }
+    $('upnext').style.display = lyrics.length ? 'none' : '';
+  }
+
+  // Data tambahan (lirik, warna aksen, lagu berikutnya) dikirim Nova di customData LOAD.
+  pm.setMessageInterceptor(cast.framework.messages.MessageType.LOAD, (req) => {
+    show(req.media, req.customData);
+    return req;
+  });
+
+  pm.addEventListener(cast.framework.events.EventType.PLAYING, () => { document.body.classList.add('playing'); document.body.classList.remove('paused'); });
+  pm.addEventListener(cast.framework.events.EventType.PAUSE, () => document.body.classList.add('paused'));
+
+  function lineAt(ms) {
+    let lo = 0, hi = lyrics.length - 1, ans = -1;
+    while (lo <= hi) { const mid = (lo + hi) >> 1; if (lyrics[mid][0] <= ms) { ans = mid; lo = mid + 1; } else hi = mid - 1; }
+    return ans;
+  }
+
+  function tick() {
+    const t = pm.getCurrentTimeSec() || 0, d = pm.getDurationSec() || 0;
+    $('fill').style.width = d > 0 ? Math.min(100, t / d * 100) + '%' : '0';
+    $('cur').textContent = fmt(t);
+    $('dur').textContent = fmt(d);
+    if (lyrics.length) {
+      const i = lineAt(t * 1000 + 250);
+      if (i !== lastLine) {
+        lastLine = i;
+        const now = i >= 0 ? lyrics[i][1] : '';
+        const next = i + 1 < lyrics.length ? lyrics[i + 1][1] : '';
+        $('lyrics').querySelector('.now').textContent = now || '♪';
+        $('lyrics').querySelector('.next').textContent = next;
+      }
+    }
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+
+  const opts = new cast.framework.CastReceiverOptions();
+  opts.disableIdleTimeout = false;
+  opts.maxInactivity = 3600;
+  ctx.start(opts);
+</script>
+</body>
+</html>

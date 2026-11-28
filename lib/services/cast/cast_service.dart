@@ -6,7 +6,10 @@ import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../demo/demo.dart';
+import '../../models.dart';
+import '../../theme.dart';
 import '../library_service.dart';
+import '../lyrics.dart';
 import '../player_service.dart';
 import 'cast_client.dart';
 import 'media_server.dart';
@@ -29,9 +32,12 @@ enum CastState { idle, connecting, casting }
 /// ganti lagu, putar/jeda, & loncat posisi dikirim ke TV; lagunya diambil TV
 /// langsung dari HP lewat WiFi.
 class CastService extends ChangeNotifier {
-  CastService(this._audio, this._library);
+  CastService(this._audio, this._library, {this.lyricsOf});
   final PlayerService _audio;
   final LibraryService _library;
+
+  /// Lirik lagu (buat ditampilin di pemutar Nova di TV).
+  final Future<Lyrics?> Function(Song song)? lyricsOf;
 
   static const _ch = MethodChannel('nova/cast');
 
@@ -301,6 +307,25 @@ class CastService extends ChangeNotifier {
     }
   }
 
+  /// Lirik sinkron, warna aksen, & lagu berikutnya buat pemutar Nova di TV.
+  Future<Map<String, dynamic>> _extra(Song song) async {
+    final out = <String, dynamic>{
+      'accent': '#${(Nv.accent.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0')}',
+    };
+    final next = _audio.upNext;
+    if (next != null) out['next'] = {'title': next.title, 'artist': next.artist};
+    try {
+      final l = await lyricsOf?.call(song).timeout(const Duration(seconds: 2));
+      if (l != null && l.synced) {
+        out['lyrics'] = [
+          for (final line in l.lines.take(400))
+            if (line.time != null) [line.time!.inMilliseconds, line.text],
+        ];
+      }
+    } catch (_) {}
+    return out;
+  }
+
   Future<void> _loadCurrent() async {
     final client = _client, server = _server;
     final song = _audio.current.value;
@@ -318,6 +343,7 @@ class CastService extends ChangeNotifier {
         coverUrl: server.coverUrl(song.id),
         start: _audio.player.position,
         autoplay: _audio.player.playing,
+        customData: await _extra(song),
       );
     } on CastException catch (e) {
       error = e.message;
