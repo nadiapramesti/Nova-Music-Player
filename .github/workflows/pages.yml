@@ -3,10 +3,9 @@
 # Sekali aja: repo Settings > Pages > Source: "GitHub Actions".
 name: Pemutar TV (Pages)
 
+# Belum aktif (butuh daftar Google Cast Developer, US$5). Jalanin manual dari tab
+# Actions setelah Pages dinyalain.
 on:
-  push:
-    branches: [main]
-    paths: ['receiver/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
