@@ -89,6 +89,9 @@ class DesktopWindow extends ChangeNotifier with WindowListener {
   Future<void> enterIsland() async {
     if (island) return;
     _normalBounds = await windowManager.getBounds();
+    // Jendela disembunyiin dulu selama berubah ukuran, biar gak keliatan
+    // nyusut & geser; muncul lagi udah di posisinya, terus pil "turun" dari atas.
+    await windowManager.setOpacity(0);
     island = true;
     stage = IslandStage.pill;
     notifyListeners();
@@ -99,12 +102,14 @@ class DesktopWindow extends ChangeNotifier with WindowListener {
     await windowManager.setAlwaysOnTop(true);
     await windowManager.setSkipTaskbar(true);
     await _applyStage();
+    await windowManager.setOpacity(1);
     _restartIdle();
   }
 
   Future<void> exitIsland() async {
     if (!island) return;
     _idle?.cancel();
+    await windowManager.setOpacity(0);
     island = false;
     notifyListeners();
     await windowManager.setAlwaysOnTop(false);
@@ -120,6 +125,7 @@ class DesktopWindow extends ChangeNotifier with WindowListener {
       await windowManager.setSize(const Size(480, 880));
       await windowManager.center();
     }
+    await windowManager.setOpacity(1);
     await windowManager.focus();
   }
 
@@ -133,8 +139,9 @@ class DesktopWindow extends ChangeNotifier with WindowListener {
   Future<void> _applyStage() async {
     final size = _sizes[stage]!;
     final anchor = _anchor ?? await _defaultAnchor();
-    await windowManager.setSize(size);
-    await windowManager.setPosition(Offset(anchor.dx - size.width / 2, anchor.dy));
+    // Ukuran + posisi diset bareng (dulu satu-satu: jendela sempat melebar ke
+    // kanan dulu baru geser ke tengah, jadi keliatan kayak muncul dari samping).
+    await windowManager.setBounds(Rect.fromLTWH(anchor.dx - size.width / 2, anchor.dy, size.width, size.height));
   }
 
   Future<Offset> _defaultAnchor() async {
@@ -285,6 +292,20 @@ class _IslandView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final w = DesktopWindow.instance;
+    // Pas pertama jadi pulau: pil turun dari atas layar.
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Motion.slow,
+      curve: Motion.enter,
+      builder: (context, t, child) => Opacity(
+        opacity: t.clamp(0.0, 1.0),
+        child: Transform.translate(offset: Offset(0, (1 - t) * -24), child: child),
+      ),
+      child: _island(w),
+    );
+  }
+
+  Widget _island(DesktopWindow w) {
     return Material(
       type: MaterialType.transparency,
       child: MouseRegion(
@@ -297,7 +318,22 @@ class _IslandView extends StatelessWidget {
           child: ValueListenableBuilder<Song?>(
             valueListenable: audio.current,
             builder: (context, song, _) => AnimatedSwitcher(
-              duration: Motion.fast,
+              duration: Motion.base,
+              switchInCurve: Motion.enter,
+              switchOutCurve: Motion.exit,
+              // Kayak notch: tumbuh dari tengah-atas ke bawah, bukan geser dari samping.
+              transitionBuilder: (child, a) => FadeTransition(
+                opacity: a,
+                child: ScaleTransition(
+                  alignment: Alignment.topCenter,
+                  scale: Tween(begin: 0.86, end: 1.0).animate(a),
+                  child: child,
+                ),
+              ),
+              layoutBuilder: (current, previous) => Stack(
+                alignment: Alignment.topCenter,
+                children: [...previous, if (current != null) current],
+              ),
               child: switch (w.stage) {
                 IslandStage.handle => _Handle(key: const ValueKey('h'), onTap: () => w.setStage(IslandStage.pill)),
                 IslandStage.pill => _Pill(key: const ValueKey('p'), song: song, onTap: () => w.setStage(IslandStage.card)),
