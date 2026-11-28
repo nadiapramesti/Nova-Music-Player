@@ -232,6 +232,7 @@ class WideButton extends StatelessWidget {
     required this.icon,
     required this.onTap,
     this.primary = true,
+    this.danger = false,
   });
 
   final String label;
@@ -239,11 +240,16 @@ class WideButton extends StatelessWidget {
   final VoidCallback onTap;
   final bool primary;
 
+  /// Tombol merah buat aksi yang gak bisa dibalikin.
+  final bool danger;
+
   @override
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(18);
+    final fill = danger ? Nv.danger : Nv.accent;
+    final on = danger ? const Color(0xFF1A0508) : Nv.onAccent;
     return Material(
-      color: primary ? Nv.accent : Colors.transparent,
+      color: primary ? fill : Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: r,
         side: primary ? BorderSide.none : BorderSide(color: Nv.line, width: 1.5),
@@ -256,9 +262,9 @@ class WideButton extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, size: 20, color: primary ? Nv.onAccent : Nv.text),
+              Icon(icon, size: 20, color: primary ? on : Nv.text),
               const SizedBox(width: 8),
-              Text(label, style: disp(TS.title, w: 800, color: primary ? Nv.onAccent : Nv.text)),
+              Text(label, style: disp(TS.title, w: 800, color: primary ? on : Nv.text)),
             ],
           ),
         ),

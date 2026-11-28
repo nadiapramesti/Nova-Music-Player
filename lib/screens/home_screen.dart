@@ -9,7 +9,6 @@ import '../widgets/art.dart';
 import '../widgets/controls.dart';
 import '../widgets/message_view.dart';
 import '../widgets/settings_sheet.dart';
-import '../widgets/song_actions.dart';
 import '../widgets/song_row.dart';
 import 'now_playing_screen.dart';
 
@@ -160,20 +159,6 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               SliverToBoxAdapter(child: _ResumeCard(songs: songs)),
-              SliverToBoxAdapter(
-                child: ListenableBuilder(
-                  listenable: stats,
-                  builder: (context, _) => _Carousel(
-                    title: 'Sering lu puter',
-                    from: 'Sering diputar',
-                    songs: stats.mostPlayed(songs).take(12).toList(),
-                  ),
-                ),
-              ),
-              // Dari pustaka udah urut terbaru ditambah.
-              SliverToBoxAdapter(
-                child: _Carousel(title: 'Baru ditambahin', from: 'Baru ditambahin', songs: songs.take(12).toList()),
-              ),
               SliverToBoxAdapter(child: SectionHeader('Daftar putar', trailing: '${songs.length}')),
               SliverToBoxAdapter(
                 child: SingleChildScrollView(
@@ -323,63 +308,6 @@ class _ResumeCard extends StatelessWidget {
           },
         );
       },
-    );
-  }
-}
-
-/// Baris kartu cover yang bisa digeser (sering diputar, baru ditambah).
-class _Carousel extends StatelessWidget {
-  const _Carousel({required this.title, required this.from, required this.songs});
-  final String title;
-  final String from;
-  final List<Song> songs;
-
-  @override
-  Widget build(BuildContext context) {
-    if (songs.length < 3) return const SizedBox.shrink();
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionHeader(title, trailing: '${songs.length}'),
-        SizedBox(
-          height: 168,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: songs.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (context, i) {
-              final s = songs[i];
-              return SizedBox(
-                width: 112,
-                child: Material(
-                  type: MaterialType.transparency,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: () => playAndOpen(context, songs, i, from: from),
-                    onLongPress: () => showSongActions(context, s),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Art(songId: s.id, size: 112, radius: 14),
-                        const SizedBox(height: 8),
-                        Text(s.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: disp(TS.body, w: 700)),
-                        const SizedBox(height: 2),
-                        Text(
-                          s.artist,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: disp(TS.caption, w: 500, color: Nv.muted),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 }

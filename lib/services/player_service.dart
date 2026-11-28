@@ -15,6 +15,7 @@ import 'equalizer.dart';
 import 'resume.dart';
 import 'sleep_timer.dart';
 import 'transition.dart';
+import 'library_service.dart' show Artwork;
 import 'stats_service.dart';
 
 class PlayerService {
@@ -219,8 +220,9 @@ class PlayerService {
       album: s.album,
       duration: s.duration,
       // Cover di notifikasi, layar kunci, & kartu musik HP (diambil Android dari file lagunya).
-      artUri: kDemo ? null : Uri.parse(s.uri),
-      extras: kDemo ? null : {'loadThumbnailUri': s.uri},
+      // Foto buatan sendiri didahulukan; kalau gak ada, cover bawaan file lagunya.
+      artUri: kDemo ? null : (Artwork.customPath(s.id) != null ? Uri.file(Artwork.customPath(s.id)!) : Uri.parse(s.uri)),
+      extras: kDemo || Artwork.customPath(s.id) != null ? null : {'loadThumbnailUri': s.uri},
     );
     // Mode demo: audio senyap sepanjang durasi lagu (gak ada file asli).
     if (kDemo) return SilentAudioSource(durationMs: s.durationMs, tag: tag);
@@ -360,6 +362,33 @@ class PlayerService {
     final pending = src.removeAt(index);
     _queueChanged();
     await pending;
+  }
+
+  /// Lagu udah dihapus dari HP: buang dari antrean. Kalau lagi diputar, lanjut ke lagu lain.
+  Future<void> forgetSong(int id) async {
+    final src = _source;
+    if (src == null || !_queue.any((s) => s.id == id)) return;
+    if (current.value?.id == id) {
+      final others = _queue.where((s) => s.id != id).length;
+      if (others == 0) {
+        await player.stop();
+        _source = null;
+        _queue.clear();
+        _cur = null;
+        current.value = null;
+        _queueChanged();
+        return;
+      }
+      if (player.hasNext) {
+        await player.seekToNext();
+      } else {
+        await player.seek(Duration.zero, index: 0);
+      }
+      _cur = player.currentIndex;
+    }
+    for (var i = _queue.length - 1; i >= 0; i--) {
+      if (_queue[i].id == id && i != _cur) await removeAt(i);
+    }
   }
 
   /// Pindah urutan (indeks sumber). Dipakai saat mode acak mati.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../demo/demo.dart';
 import '../models.dart';
 import '../services/services.dart';
 import '../theme.dart';
@@ -123,6 +124,30 @@ void showSongActions(BuildContext context, Song song, {String? playlistId}) {
                 showEditSong(context, song);
               },
             ),
+            if (!kDemo) ...[
+              ActionTile(
+                icon: Icons.add_photo_alternate_outlined,
+                label: Artwork.customIds.contains(song.id) ? 'Ganti foto lagu' : 'Tambah foto lagu',
+                onTap: () async {
+                  Navigator.of(sheet).pop();
+                  try {
+                    if (await Artwork.pick(song.id) && context.mounted) showToast(context, 'Foto lagu dipasang');
+                  } catch (_) {
+                    if (context.mounted) showToast(context, 'Foto itu gak bisa dibaca, coba foto lain');
+                  }
+                },
+              ),
+              if (Artwork.customIds.contains(song.id))
+                ActionTile(
+                  icon: Icons.hide_image_outlined,
+                  label: 'Hapus foto buatan',
+                  onTap: () async {
+                    Navigator.of(sheet).pop();
+                    await Artwork.removeCustom(song.id);
+                    if (context.mounted) showToast(context, 'Balik ke cover bawaan');
+                  },
+                ),
+            ],
             if (playlistId != null)
               ActionTile(
                 icon: Icons.remove_circle_outline_rounded,
@@ -130,6 +155,16 @@ void showSongActions(BuildContext context, Song song, {String? playlistId}) {
                 onTap: () {
                   playlists.remove(playlistId, song.id);
                   Navigator.of(sheet).pop();
+                },
+              ),
+            if (!kDemo)
+              ActionTile(
+                icon: Icons.delete_outline_rounded,
+                label: 'Hapus lagu dari HP',
+                danger: true,
+                onTap: () {
+                  Navigator.of(sheet).pop();
+                  _confirmDelete(context, song);
                 },
               ),
           ],
@@ -246,6 +281,48 @@ Future<String?> askPlaylistName(BuildContext context, {required String title, St
             opacity: v.text.trim().isEmpty ? 0.5 : 1,
             child: WideButton(label: 'Simpan', icon: Icons.check_rounded, onTap: submit),
           ),
+        ),
+      ],
+    );
+  });
+}
+
+/// Konfirmasi hapus file lagu. Android 11+ masih nampilin konfirmasi sendiri sesudahnya.
+void _confirmDelete(BuildContext context, Song song) {
+  showGlassSheet<void>(context, (sheet) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('HAPUS LAGU', style: mono(TS.label, spacing: 1.2, color: Nv.danger)),
+        const SizedBox(height: 4),
+        Text('Hapus "${song.title}"?', maxLines: 2, overflow: TextOverflow.ellipsis, style: disp(TS.h2, spacing: -0.6)),
+        const SizedBox(height: 6),
+        Text(
+          'File lagunya dihapus permanen dari HP, gak cuma dari Nova. Gak bisa dibalikin.',
+          style: disp(TS.body, w: 500, color: Nv.muted, height: 1.4),
+        ),
+        const SizedBox(height: 18),
+        WideButton(label: 'Batal', icon: Icons.close_rounded, primary: false, onTap: () => Navigator.of(sheet).pop()),
+        const SizedBox(height: 8),
+        WideButton(
+          label: 'Hapus permanen',
+          icon: Icons.delete_outline_rounded,
+          danger: true,
+          onTap: () async {
+            Navigator.of(sheet).pop();
+            try {
+              final ok = await library.deleteSongs([song.id]);
+              if (ok) {
+                await audio.forgetSong(song.id);
+                if (context.mounted) showToast(context, 'Lagu dihapus');
+              } else if (context.mounted) {
+                showToast(context, 'Batal dihapus');
+              }
+            } catch (_) {
+              if (context.mounted) showToast(context, 'Lagu gak bisa dihapus');
+            }
+          },
         ),
       ],
     );
@@ -369,6 +446,7 @@ class ActionTile extends StatelessWidget {
     required this.onTap,
     this.trailing,
     this.highlight = false,
+    this.danger = false,
   });
 
   final IconData icon;
@@ -376,11 +454,12 @@ class ActionTile extends StatelessWidget {
   final VoidCallback onTap;
   final String? trailing;
   final bool highlight;
+  final bool danger;
 
   @override
   Widget build(BuildContext context) {
     final r = BorderRadius.circular(16);
-    final fg = highlight ? Nv.accent : Nv.text;
+    final fg = danger ? Nv.danger : (highlight ? Nv.accent : Nv.text);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(

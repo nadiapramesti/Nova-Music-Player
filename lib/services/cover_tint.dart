@@ -77,6 +77,11 @@ class CoverTintService extends ChangeNotifier {
     final p = await SharedPreferences.getInstance();
     enabled = p.getBool('accentFromCover') ?? true;
     _audio.current.addListener(_update);
+    // Foto lagu diganti → warna aksen ikut dihitung ulang.
+    Artwork.version.addListener(() {
+      _cache.clear();
+      _update();
+    });
     await _update();
   }
 

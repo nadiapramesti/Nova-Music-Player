@@ -105,6 +105,7 @@ class LibraryService extends ChangeNotifier {
       _p ??= await SharedPreferences.getInstance();
       hiddenFolders = (_p!.getStringList('hiddenFolders') ?? const []).toSet();
       edits = decodeEdits(_p!.getString('songEdits'));
+      await Artwork.loadCustom();
       final raw = await _ch.invokeListMethod<Map<Object?, Object?>>('songs') ?? const [];
       _scanned = raw
           .map((m) => Song.fromMap(m.map((k, v) => MapEntry(k.toString(), v))))
@@ -119,6 +120,21 @@ class LibraryService extends ChangeNotifier {
       status = LibraryStatus.error;
     }
     notifyListeners();
+  }
+
+  /// Hapus file lagu dari HP (Android nampilin konfirmasi sendiri).
+  /// true = beneran kehapus; lagu langsung dibuang dari daftar.
+  Future<bool> deleteSongs(List<int> ids) async {
+    if (kDemo || ids.isEmpty) return false;
+    final ok = await _ch.invokeMethod<bool>('deleteSongs', {'ids': ids}) ?? false;
+    if (!ok) return false;
+    final gone = ids.toSet();
+    _scanned = [for (final s in _scanned) if (!gone.contains(s.id)) s];
+    allSongs = applyEdits(_scanned, edits);
+    Artwork.customIds = {...Artwork.customIds}..removeAll(gone);
+    _applyHidden();
+    notifyListeners();
+    return true;
   }
 
   /// Sembunyikan app tanpa menutupnya (musik tetap jalan).
@@ -151,6 +167,45 @@ class LibraryService extends ChangeNotifier {
 class Artwork {
   static const _ch = MethodChannel('nova/media');
   static final _cache = <String, Future<Uint8List?>>{};
+
+  /// Naik tiap ada foto lagu yang diganti, biar semua cover ikut digambar ulang.
+  static final version = ValueNotifier<int>(0);
+
+  /// Lagu yang punya foto buatan sendiri, & folder tempat fotonya.
+  static Set<int> customIds = {};
+  static String? coverDir;
+
+  static String? customPath(int songId) =>
+      coverDir != null && customIds.contains(songId) ? '$coverDir/$songId.jpg' : null;
+
+  static Future<void> loadCustom() async {
+    if (kDemo) return;
+    try {
+      coverDir = await _ch.invokeMethod<String>('coverDir');
+      final ids = await _ch.invokeListMethod<dynamic>('coverIds') ?? const [];
+      customIds = {for (final i in ids) (i as num).toInt()};
+    } catch (_) {}
+  }
+
+  static void evict(int songId) {
+    _cache.removeWhere((k, _) => k.startsWith('$songId@'));
+    version.value++;
+  }
+
+  /// Pilih foto dari galeri buat lagu ini. true = berhasil diganti.
+  static Future<bool> pick(int songId) async {
+    final path = await _ch.invokeMethod<String>('pickCover', {'id': songId});
+    if (path == null) return false;
+    customIds = {...customIds, songId};
+    evict(songId);
+    return true;
+  }
+
+  static Future<void> removeCustom(int songId) async {
+    await _ch.invokeMethod<bool>('removeCover', {'id': songId});
+    customIds = {...customIds}..remove(songId);
+    evict(songId);
+  }
 
   static Future<Uint8List?> of(int songId, int size) {
     if (kDemo) return Future.value(null);

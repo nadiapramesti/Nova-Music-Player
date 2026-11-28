@@ -59,6 +59,8 @@ import java.util.concurrent.Executors
  */
 private const val REQ_BACKUP_SAVE = 7101
 private const val REQ_BACKUP_OPEN = 7102
+private const val REQ_COVER_PICK = 7103
+private const val REQ_DELETE = 7104
 
 class MainActivity : AudioServiceActivity() {
     private val main = Handler(Looper.getMainLooper())
@@ -67,8 +69,56 @@ class MainActivity : AudioServiceActivity() {
     private var backupResult: MethodChannel.Result? = null
     private var backupContent: String? = null
 
+    // Foto lagu & hapus lagu: nunggu jawaban dari pemilih foto / dialog hapus Android.
+    private var coverResult: MethodChannel.Result? = null
+    private var coverSongId: Long = -1
+    private var deleteResult: MethodChannel.Result? = null
+    private var deleteIds: List<Long> = emptyList()
+
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == REQ_COVER_PICK) {
+            val res = coverResult ?: return
+            coverResult = null
+            val uri = data?.data
+            if (resultCode != RESULT_OK || uri == null) {
+                res.success(null)
+                return
+            }
+            val id = coverSongId
+            NovaMedia.io.execute {
+                val path = try {
+                    NovaMedia.saveCover(applicationContext, id, uri)
+                } catch (e: Exception) {
+                    null
+                }
+                main.post { if (path == null) res.error("cover", "Foto gak bisa dibaca", null) else res.success(path) }
+            }
+            return
+        }
+        if (requestCode == REQ_DELETE) {
+            val res = deleteResult ?: return
+            deleteResult = null
+            if (resultCode != RESULT_OK) {
+                res.success(false)
+                return
+            }
+            // Android 10: izin udah dikasih, sekarang beneran dihapus.
+            if (Build.VERSION.SDK_INT == Build.VERSION_CODES.Q) {
+                NovaMedia.io.execute {
+                    val ok = try {
+                        NovaMedia.deleteDirect(applicationContext, deleteIds)
+                    } catch (e: Exception) {
+                        false
+                    }
+                    main.post { res.success(ok) }
+                }
+            } else {
+                deleteIds.forEach { NovaMedia.coverFile(applicationContext, it).delete() }
+                res.success(true)
+            }
+            return
+        }
         if (requestCode != REQ_BACKUP_SAVE && requestCode != REQ_BACKUP_OPEN) return
         val res = backupResult ?: return
         backupResult = null
@@ -126,6 +176,58 @@ class MainActivity : AudioServiceActivity() {
                                 null
                             }
                             main.post { result.success(bytes) }
+                        }
+                    }
+                }
+                // ---- Foto lagu buatan sendiri ----
+                "coverDir" -> result.success(NovaMedia.coverDir(applicationContext).absolutePath)
+                "coverIds" -> result.success(NovaMedia.coverIds(applicationContext))
+                "pickCover" -> {
+                    coverResult?.success(null)
+                    coverResult = result
+                    coverSongId = call.argument<Number>("id")?.toLong() ?: -1
+                    val i = Intent(Intent.ACTION_GET_CONTENT)
+                        .addCategory(Intent.CATEGORY_OPENABLE)
+                        .setType("image/*")
+                    startActivityForResult(Intent.createChooser(i, "Pilih foto lagu"), REQ_COVER_PICK)
+                }
+                "removeCover" -> {
+                    val id = call.argument<Number>("id")?.toLong() ?: -1
+                    result.success(NovaMedia.coverFile(applicationContext, id).delete())
+                }
+                // ---- Hapus file lagu dari HP (Android minta konfirmasi sendiri) ----
+                "deleteSongs" -> {
+                    val ids = (call.argument<List<Number>>("ids") ?: emptyList()).map { it.toLong() }
+                    if (ids.isEmpty()) {
+                        result.success(false)
+                    } else {
+                        deleteResult?.success(false)
+                        deleteResult = result
+                        deleteIds = ids
+                        val uris = ids.map { ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, it) }
+                        try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                                val req = MediaStore.createDeleteRequest(contentResolver, uris)
+                                startIntentSenderForResult(req.intentSender, REQ_DELETE, null, 0, 0, 0)
+                            } else {
+                                NovaMedia.io.execute {
+                                    try {
+                                        val ok = NovaMedia.deleteDirect(applicationContext, ids)
+                                        main.post { deleteResult = null; result.success(ok) }
+                                    } catch (e: android.app.RecoverableSecurityException) {
+                                        main.post {
+                                            startIntentSenderForResult(
+                                                e.userAction.actionIntent.intentSender, REQ_DELETE, null, 0, 0, 0,
+                                            )
+                                        }
+                                    } catch (e: Exception) {
+                                        main.post { deleteResult = null; result.error("delete", e.message, null) }
+                                    }
+                                }
+                            }
+                        } catch (e: Exception) {
+                            deleteResult = null
+                            result.error("delete", e.message, null)
                         }
                     }
                 }
@@ -338,7 +440,51 @@ object NovaMedia {
         return out
     }
 
+    // ---- Foto lagu buatan sendiri: files/covers/<id>.jpg, didahulukan dari cover bawaan ----
+    fun coverDir(ctx: Context): java.io.File = java.io.File(ctx.filesDir, "covers").apply { mkdirs() }
+
+    fun coverFile(ctx: Context, id: Long): java.io.File = java.io.File(coverDir(ctx), "$id.jpg")
+
+    fun coverIds(ctx: Context): List<Long> =
+        coverDir(ctx).listFiles()?.mapNotNull { it.nameWithoutExtension.toLongOrNull() } ?: emptyList()
+
+    /** Simpan foto pilihan jadi kotak 800px (dipotong tengah). */
+    fun saveCover(ctx: Context, id: Long, uri: Uri): String {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        ctx.contentResolver.openInputStream(uri)!!.use { BitmapFactory.decodeStream(it, null, bounds) }
+        var sample = 1
+        while (bounds.outWidth / (sample * 2) >= 800 && bounds.outHeight / (sample * 2) >= 800) sample *= 2
+        val src = ctx.contentResolver.openInputStream(uri)!!.use {
+            BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inSampleSize = sample })
+        } ?: throw IllegalStateException("bukan gambar")
+        val side = minOf(src.width, src.height)
+        val square = Bitmap.createBitmap(src, (src.width - side) / 2, (src.height - side) / 2, side, side)
+        val out = if (side > 800) Bitmap.createScaledBitmap(square, 800, 800, true) else square
+        val file = coverFile(ctx, id)
+        java.io.FileOutputStream(file).use { out.compress(Bitmap.CompressFormat.JPEG, 90, it) }
+        return file.absolutePath
+    }
+
+    /** Hapus langsung (Android 10 ke bawah / setelah diizinin). */
+    fun deleteDirect(ctx: Context, ids: List<Long>): Boolean {
+        var all = true
+        for (id in ids) {
+            val n = ctx.contentResolver.delete(ContentUris.withAppendedId(MediaStore.Audio.Media.EXTERNAL_CONTENT_URI, id), null, null)
+            if (n <= 0) all = false
+            coverFile(ctx, id).delete()
+        }
+        return all
+    }
+
     fun artworkBitmap(ctx: Context, id: Long, size: Int): Bitmap? {
+        val custom = coverFile(ctx, id)
+        if (custom.exists()) {
+            val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(custom.absolutePath, opts)
+            var s = 1
+            while (opts.outWidth / (s * 2) >= size && opts.outHeight / (s * 2) >= size) s *= 2
+            BitmapFactory.decodeFile(custom.absolutePath, BitmapFactory.Options().apply { inSampleSize = s })?.let { return it }
+        }
         val retriever = MediaMetadataRetriever()
         try {
             retriever.setDataSource(

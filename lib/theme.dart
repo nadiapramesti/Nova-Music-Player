@@ -117,6 +117,9 @@ class Nv {
   static Color get text => p.text;
   static Color get muted => p.muted;
   static Color get accent => p.accent;
+
+  /// Merah buat aksi yang gak bisa dibalikin (hapus file).
+  static Color get danger => isLight ? const Color(0xFFC6283B) : const Color(0xFFFF7A86);
   static Color get onAccent => p.onAccent;
   static Color get accentSoft => p.accentSoft;
   static Color get line => p.line;

@@ -35,7 +35,10 @@ class Art extends StatelessWidget {
     }
     final box = ClipRRect(
       borderRadius: BorderRadius.circular(radius),
-      child: FutureBuilder<Uint8List?>(
+      // Gambar ulang kalau foto lagu diganti / dihapus.
+      child: ValueListenableBuilder<int>(
+        valueListenable: Artwork.version,
+        builder: (context, _, __) => FutureBuilder<Uint8List?>(
         future: Artwork.of(songId, big ? 720 : 160),
         builder: (context, snap) {
           final bytes = snap.data;
@@ -48,6 +51,7 @@ class Art extends StatelessWidget {
           }
           return Image.memory(bytes, fit: BoxFit.cover, gaplessPlayback: true);
         },
+        ),
       ),
     );
     if (size == null) return box;
